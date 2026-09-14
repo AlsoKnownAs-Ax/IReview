@@ -10,7 +10,14 @@ export default defineConfig(
   js.configs.recommended,
   tseslint.configs.recommended,
   {
-    files: ['src/main/**', 'src/preload/**', 'src/shared/**', '*.config.{ts,mjs,cjs}', '.dependency-cruiser.cjs'],
+    files: [
+      'src/main/**',
+      'src/preload/**',
+      'src/shared/**',
+      'tests/**',
+      '*.config.{ts,mjs,cjs}',
+      '.dependency-cruiser.cjs',
+    ],
     languageOptions: { globals: globals.node },
   },
   {
