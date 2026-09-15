@@ -72,13 +72,17 @@ export const tokens = {
 `)
   })
 
-  test('reports a document without front matter, with malformed YAML or with a missing token group', () => {
-    expect(generateTokens('# No tokens')).toEqual({ data: null, error: { code: 'MISSING_FRONT_MATTER' } })
-    expect(generateTokens('---\ncolors: [\n---').error).toMatchObject({ code: 'INVALID_YAML' })
-    expect(generateTokens(DESIGN.replace('rounded:', 'corners:')).error).toMatchObject({
-      code: 'INVALID_TOKENS',
-      issues: [{ path: ['rounded'] }],
-    })
+  test.each([
+    ['no front matter', '# No tokens', { code: 'MISSING_FRONT_MATTER' }],
+    ['an unclosed front matter', DESIGN.replace('\n---\n', '\n----\n'), { code: 'MISSING_FRONT_MATTER' }],
+    ['malformed YAML', '---\ncolors: [\n---', { code: 'INVALID_YAML' }],
+    [
+      'a missing token group',
+      DESIGN.replace('rounded:', 'corners:'),
+      { code: 'INVALID_TOKENS', issues: [{ path: ['rounded'] }] },
+    ],
+  ])('reports a document with %s', (_, designMd, error) => {
+    expect(generateTokens(designMd)).toMatchObject({ data: null, error })
   })
 
   test('the committed theme files match a fresh generation from DESIGN.md', () => {

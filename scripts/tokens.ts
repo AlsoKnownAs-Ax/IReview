@@ -1,7 +1,10 @@
 import { parseDocument } from 'yaml'
 import { z } from 'zod'
 
-/** What `pnpm gen:tokens` reads and the generated, committed theme it writes, relative to the repo root. */
+/**
+ * What `pnpm gen:tokens` reads and the generated, committed theme it writes. Relative to the working directory, which
+ * pnpm and Vitest set to the repo root.
+ */
 export const TOKEN_PATHS = {
   design: 'DESIGN.md',
   css: 'src/renderer/src/theme/tokens.css',
@@ -9,6 +12,9 @@ export const TOKEN_PATHS = {
 } as const
 
 const HEADER = '/* Generated from DESIGN.md by scripts/gen-tokens.ts. Do not edit; run `pnpm gen:tokens`. */'
+
+/** YAML between a leading `---` line and the next `---` line. */
+const FRONT_MATTER = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/
 
 const ScaleSchema = z.record(z.string(), z.string())
 
@@ -45,7 +51,7 @@ export type TokensError =
 
 /** Turns the DESIGN.md front matter into a Tailwind v4 `@theme` stylesheet and a TS module of the same tokens. */
 export function generateTokens(designMd: string): Result<GeneratedTokens, TokensError> {
-  const frontMatter = /^---\r?\n([\s\S]*?)\r?\n---/.exec(designMd)?.[1]
+  const frontMatter = FRONT_MATTER.exec(designMd)?.[1]
   if (frontMatter === undefined) return { data: null, error: { code: 'MISSING_FRONT_MATTER' } }
 
   const document = parseDocument(frontMatter)
@@ -91,6 +97,6 @@ function themeVariables({ colors, typography, rounded, spacing }: Tokens): strin
   ]
 }
 
-function scaleVariables(namespace: string, scale: Record<string, string>): string[] {
+function scaleVariables(namespace: 'color' | 'radius' | 'spacing', scale: Record<string, string>): string[] {
   return Object.entries(scale).map(([name, value]) => `--${namespace}-${name}: ${value}`)
 }
