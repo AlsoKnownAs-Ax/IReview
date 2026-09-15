@@ -61,6 +61,7 @@
   --color-syntax-tag: #cf8f8c;
   --color-syntax-operator: #a4a9b2;
   --color-syntax-punctuation: #9ba0a9;
+  --text-*: initial;
   --text-display-xl: 80px;
   --text-display-xl--line-height: 1.05;
   --text-display-xl--font-weight: 600;
@@ -113,6 +114,7 @@
   --text-mono--line-height: 1.5;
   --text-mono--font-weight: 400;
   --text-mono--letter-spacing: 0;
+  --radius-*: initial;
   --radius-xs: 4px;
   --radius-sm: 6px;
   --radius-md: 8px;
