@@ -1,4 +1,4 @@
-import './zod-jitless'
+import './app/zod-jitless'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { App } from './app/App'

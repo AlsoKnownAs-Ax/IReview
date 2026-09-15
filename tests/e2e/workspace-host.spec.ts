@@ -20,11 +20,7 @@ function isRunning(pid: number): boolean {
   }
 }
 
-test('the Window shows that its workspace host answered a ping', async () => {
-  await expect(launched.window.getByTestId('workspace-host-status')).toHaveText('Workspace host connected')
-})
-
-test('the Window reconnects to its workspace host after a reload', async () => {
+test('the Window shows that its workspace host answered a ping, again after a reload', async () => {
   const { window } = launched
   await expect(window.getByTestId('workspace-host-status')).toHaveText('Workspace host connected')
 
@@ -36,10 +32,10 @@ test('the Window reconnects to its workspace host after a reload', async () => {
 test('closing the Window stops its workspace host', async () => {
   const { app, window } = launched
   await expect(window.getByTestId('workspace-host-status')).toHaveText('Workspace host connected')
-  const hostPids = () =>
-    app.evaluate(({ app }) => app.getAppMetrics().flatMap((metric) => (metric.type === 'Utility' ? [metric] : [])))
-  const [host] = (await hostPids()).filter((metric) => metric.name === 'IReview Workspace Host')
-  expect(host && isRunning(host.pid)).toBe(true)
+  const metrics = await app.evaluate(({ app }) => app.getAppMetrics())
+  const host = metrics.find((metric) => metric.name === 'IReview Workspace Host')
+  if (!host) throw new Error('The Window has no workspace host process')
+  expect(isRunning(host.pid)).toBe(true)
 
   // A second, hostless window keeps the app from quitting, so only closing the Window can stop the host.
   await app.evaluate(({ BrowserWindow }) => {
@@ -48,5 +44,5 @@ test('closing the Window stops its workspace host', async () => {
     target?.close()
   })
 
-  await expect.poll(() => isRunning(host!.pid)).toBe(false)
+  await expect.poll(() => isRunning(host.pid)).toBe(false)
 })
