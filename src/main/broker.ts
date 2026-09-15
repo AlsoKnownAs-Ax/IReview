@@ -11,10 +11,10 @@ export function startWorkspaceHost(window: BrowserWindow): void {
   const host = utilityProcess.fork(join(__dirname, 'workspace-host.js'), [], { serviceName: 'IReview Workspace Host' })
   const contents = window.webContents
 
-  contents.on('did-finish-load', () => {
+  contents.on('did-finish-load', (): void => {
     const { port1, port2 } = new MessageChannelMain()
     host.postMessage(null, [port1])
     contents.postMessage(WORKSPACE_HOST_PORT, null, [port2])
   })
-  window.on('closed', () => host.kill())
+  window.on('closed', (): boolean => host.kill())
 }

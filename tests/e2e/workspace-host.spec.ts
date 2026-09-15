@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import { launchApp, type LaunchedApp } from '../fixtures/launch-app'
 
 let launched: LaunchedApp
@@ -20,22 +20,25 @@ function isRunning(pid: number): boolean {
   }
 }
 
+async function expectHostConnected(window: Page): Promise<void> {
+  await expect(window.getByTestId('workspace-host-status')).toHaveText('Workspace host connected')
+}
+
 test('the Window shows that its workspace host answered a ping, again after a reload', async () => {
-  const { window } = launched
-  await expect(window.getByTestId('workspace-host-status')).toHaveText('Workspace host connected')
+  await expectHostConnected(launched.window)
 
-  await window.reload()
+  await launched.window.reload()
 
-  await expect(window.getByTestId('workspace-host-status')).toHaveText('Workspace host connected')
+  await expectHostConnected(launched.window)
 })
 
 test('closing the Window stops its workspace host', async () => {
   const { app, window } = launched
-  await expect(window.getByTestId('workspace-host-status')).toHaveText('Workspace host connected')
+  await expectHostConnected(window)
   const metrics = await app.evaluate(({ app }) => app.getAppMetrics())
-  const host = metrics.find((metric) => metric.name === 'IReview Workspace Host')
-  if (!host) throw new Error('The Window has no workspace host process')
-  expect(isRunning(host.pid)).toBe(true)
+  const hostMetric = metrics.find((metric) => metric.name === 'IReview Workspace Host')
+  if (!hostMetric) throw new Error('The Window has no workspace host process')
+  expect(isRunning(hostMetric.pid)).toBe(true)
 
   // A second, hostless window keeps the app from quitting, so only closing the Window can stop the host.
   await app.evaluate(({ BrowserWindow }) => {
@@ -44,5 +47,5 @@ test('closing the Window stops its workspace host', async () => {
     target?.close()
   })
 
-  await expect.poll(() => isRunning(host.pid)).toBe(false)
+  await expect.poll(() => isRunning(hostMetric.pid)).toBe(false)
 })

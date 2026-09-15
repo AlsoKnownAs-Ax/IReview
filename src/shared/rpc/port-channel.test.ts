@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest'
+import { afterEach, describe, expect, test } from 'vitest'
 import { z } from 'zod'
 import type { Channel } from './channel'
 import { createClient } from './client'
@@ -7,18 +7,22 @@ import {
   createMessagePortChannel,
   createMessagePortMainChannel,
   type MainMessagePort,
+  type PortListener,
   type WebMessagePort,
 } from './port-channel'
 import { serve } from './server'
 
-type Listener = (event: { data: unknown }) => void
-type FakeEnd = { listeners: Set<Listener>; queue: unknown[]; started: boolean }
+type FakeEnd = { listeners: Set<PortListener>; queue: unknown[]; started: boolean }
 
 const contract = { echo: rpc({ input: z.string(), result: z.string() }) }
+const openPorts: { close(): void }[] = []
+
+afterEach((): void => openPorts.splice(0).forEach((port) => port.close()))
 
 /** Node's MessageChannel stands in for the DOM one. Its types give listeners a plain `Event`, not a `MessageEvent`. */
 function domChannelPair(): [Channel, Channel] {
   const { port1, port2 } = new MessageChannel()
+  openPorts.push(port1, port2)
   const [a, b] = [port1, port2] as unknown as [WebMessagePort, WebMessagePort]
   return [createMessagePortChannel(a), createMessagePortChannel(b)]
 }
@@ -30,13 +34,17 @@ function mainChannelPair(): [Channel, Channel] {
     end.queue.splice(0).forEach((data) => end.listeners.forEach((listener) => listener({ data })))
   }
   const port = (own: FakeEnd, peer: FakeEnd): MainMessagePort => ({
-    postMessage(message) {
+    postMessage(message): void {
       peer.queue.push(structuredClone(message))
       queueMicrotask(() => flush(peer))
     },
-    on: (_, listener) => own.listeners.add(listener),
-    off: (_, listener) => own.listeners.delete(listener),
-    start() {
+    on(_, listener): void {
+      own.listeners.add(listener)
+    },
+    off(_, listener): void {
+      own.listeners.delete(listener)
+    },
+    start(): void {
       own.started = true
       flush(own)
     },
