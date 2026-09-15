@@ -52,9 +52,9 @@ describe.each([
 ])('over a %s', (_, channelPair) => {
   test('a call resolves with the handler result', async () => {
     const [clientEnd, hostEnd] = channelPair()
-    serve(contract, { echo: (text) => `echo: ${text}` }, hostEnd)
+    serve(contract, { echo: (text) => ({ data: `echo: ${text}`, error: null }) }, hostEnd)
 
-    await expect(createClient(contract, clientEnd).echo('hello')).resolves.toBe('echo: hello')
+    await expect(createClient(contract, clientEnd).echo('hello')).resolves.toEqual({ data: 'echo: hello', error: null })
   })
 
   test('a removed listener receives nothing more', async () => {
@@ -62,12 +62,25 @@ describe.each([
     const received: unknown[] = []
     const stop = channel.onMessage((message) => received.push(message))
 
-    peer.send({ kind: 'result', id: 1, value: 'first' })
+    peer.send({ kind: 'response', id: 1, data: 'first', error: null })
     await expect.poll(() => received).toHaveLength(1)
     stop()
-    peer.send({ kind: 'result', id: 2, value: 'second' })
+    peer.send({ kind: 'response', id: 2, data: 'second', error: null })
     await new Promise((resolve) => setTimeout(resolve, 20))
 
-    expect(received).toEqual([{ kind: 'result', id: 1, value: 'first' }])
+    expect(received).toEqual([{ kind: 'response', id: 1, data: 'first', error: null }])
+  })
+
+  test('a message the port cannot clone is a SEND_FAILED value, not a throw', () => {
+    const [channel] = channelPair()
+
+    expect(channel.send({ kind: 'response', id: 1, data: () => 'uncloneable', error: null })).toEqual({
+      data: null,
+      error: { code: 'SEND_FAILED' },
+    })
+    expect(channel.send({ kind: 'response', id: 2, data: 'cloneable', error: null })).toEqual({
+      data: null,
+      error: null,
+    })
   })
 })

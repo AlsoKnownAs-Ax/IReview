@@ -13,8 +13,9 @@ export function App({ workspaceHost }: { workspaceHost: Promise<WorkspaceClient>
     let isMounted = true
     void workspaceHost
       .then((host) => host.ping())
-      .then((): void => {
-        if (isMounted) setConnected(true)
+      .then(({ error }): void => {
+        if (error || !isMounted) return
+        setConnected(true)
       })
     return (): void => {
       isMounted = false
