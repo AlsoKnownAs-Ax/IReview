@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { WelcomeWindow } from '../welcome/WelcomeWindow'
+import { WelcomeWindow } from './WelcomeWindow'
 
 export function App(): ReactElement {
   return (
