@@ -419,7 +419,7 @@ real GitHub (opt-in).
 ### M6 — Restore and release
 
 - Full restore (§3.9) with mode reset after history replay, 30 s scrollback snapshots, state migrations, quit
-  confirmation (foreground process detection on macOS, process tree on Windows), electron-builder artifacts
+  confirmation (foreground process detection on macOS, process tree on Windows), Electron fuses (§5.1), electron-builder artifacts
   (macOS arm64 + x64 dmg/zip, Windows x64 NSIS), tag-triggered release workflow, packaged smoke test.
 
 **Accept:** relaunch restores Layout and Terminals (history, then a fresh prompt in the right cwd); after a hard kill
