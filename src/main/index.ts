@@ -1,7 +1,7 @@
 import { join } from 'node:path'
 import { app, BrowserWindow } from 'electron'
+import { APP_ORIGIN } from './config'
 import { serveRendererOverAppProtocol, registerAppScheme } from './security/app-protocol'
-import { APP_ORIGIN } from './security/app-url'
 
 registerAppScheme()
 

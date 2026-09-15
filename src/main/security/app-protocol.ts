@@ -1,6 +1,7 @@
 import { pathToFileURL } from 'node:url'
 import { net, protocol } from 'electron'
-import { APP_SCHEME, resolveAppUrl } from './app-url'
+import { APP_SCHEME } from '../config'
+import { resolveAppUrl } from './app-url'
 
 /** Must run before the app is ready. */
 export function registerAppScheme(): void {
