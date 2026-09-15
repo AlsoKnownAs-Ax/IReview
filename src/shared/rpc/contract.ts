@@ -12,6 +12,9 @@ export type RpcFailure =
   | { code: 'SEND_FAILED' }
   | { code: 'INTERNAL' }
 
+/** What a response carries on the wire, before a client narrows it to a member's types. */
+export type RpcResult = Result<unknown, CodedError>
+
 type RpcMember<I extends ZodType, R extends ZodType, E extends ZodType<CodedError>> = {
   kind: 'rpc'
   input: I
@@ -29,7 +32,7 @@ export type Handlers<C extends Contract> = {
   [K in keyof C]: (input: z.output<C[K]['input']>) => Awaitable<Result<z.input<C[K]['result']>, z.input<C[K]['error']>>>
 }
 
-/** What a caller gets: each call resolves to the parsed result, a member error or an `RpcFailure`, and never rejects. */
+/** What a caller gets: each call resolves to the server-parsed result, a member error or an `RpcFailure`. */
 export type Client<C extends Contract> = {
   [K in keyof C]: (
     input: z.input<C[K]['input']>,
@@ -38,14 +41,19 @@ export type Client<C extends Contract> = {
 
 /**
  * A request → response member. The server validates `input` before the handler runs, and `result` and `error` before
- * sending, which also strips fields the schemas don't declare. `error` defaults to none.
+ * sending, which also strips fields the schemas don't declare. Without `error`, the member has no errors of its own.
  */
-export function rpc<I extends ZodType, R extends ZodType, E extends ZodType<CodedError> = z.ZodNever>(schemas: {
+export function rpc<I extends ZodType, R extends ZodType>(schemas: { input: I; result: R }): RpcMember<I, R, z.ZodNever>
+export function rpc<I extends ZodType, R extends ZodType, E extends ZodType<CodedError>>(schemas: {
   input: I
   result: R
-  error?: E
-}): RpcMember<I, R, E> {
-  // `E` only falls back to `ZodNever` when `error` is omitted, so the default schema matches it.
-  const { input, result, error = z.never() as ZodType as E } = schemas
+  error: E
+}): RpcMember<I, R, E>
+export function rpc(schemas: {
+  input: ZodType
+  result: ZodType
+  error?: ZodType<CodedError>
+}): RpcMember<ZodType, ZodType, ZodType<CodedError>> {
+  const { input, result, error = z.never() } = schemas
   return { kind: 'rpc', input, result, error }
 }

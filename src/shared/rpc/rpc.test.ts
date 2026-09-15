@@ -20,9 +20,9 @@ function connect(handlers: Handlers<typeof contract>): { client: Client<typeof c
   const sent: RpcMessage[] = []
   const recordingEnd: Channel = {
     onMessage: serverEnd.onMessage,
-    send(message) {
+    send(message): ReturnType<Channel['send']> {
       sent.push(message)
-      serverEnd.send(message)
+      return serverEnd.send(message)
     },
   }
   serve(contract, handlers, recordingEnd)
@@ -74,12 +74,17 @@ test("a contract error reaches the client unchanged, minus fields its schema doe
   expect(result).toEqual({ data: null, error: { code: 'BRANCH_CHECKED_OUT', branch: 'main' } })
 })
 
-test('an unexpected throw becomes INTERNAL without leaking its message or stack', async () => {
-  const { client, sent } = connect({
-    checkout: () => {
+test.each([
+  [
+    'a throw',
+    (): never => {
       throw new Error('ENOENT: C:\\secret\\repo')
     },
-  })
+  ],
+  ['a return that is not a Result', (): undefined => undefined],
+])('%s from a handler becomes INTERNAL without leaking anything', async (_, checkout) => {
+  // @ts-expect-error -- handlers are not bound by the contract's types at runtime
+  const { client, sent } = connect({ checkout })
 
   expect(await client.checkout({ branch: 'main' })).toEqual({ data: null, error: { code: 'INTERNAL' } })
   expect(sent).toEqual([{ kind: 'response', id: expect.any(Number), data: null, error: { code: 'INTERNAL' } }])

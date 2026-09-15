@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type { Result } from './contract'
+import type { Result, RpcFailure } from './contract'
 
 const messageId = z.number()
 
@@ -23,20 +23,12 @@ export type RequestMessage = z.infer<typeof requestMessage>
 export type ResponseMessage = z.infer<typeof responseMessage>
 export type RpcMessage = RequestMessage | ResponseMessage
 
+export type SendFailed = Extract<RpcFailure, { code: 'SEND_FAILED' }>
+
 /** The minimal duplex the rpc library runs over; each transport implements it (SPEC §5.2). */
 export type Channel = {
-  /** May throw, such as for a message that cannot be structured-cloned. */
-  send(message: RpcMessage): void
+  /** Transports map their own failures, such as a message that cannot be structured-cloned, to `SEND_FAILED`. */
+  send(message: RpcMessage): Result<null, SendFailed>
   /** Incoming messages are untrusted, so they arrive as `unknown`. Returns a function that removes the listener. */
   onMessage(listener: (message: unknown) => void): () => void
-}
-
-/** `channel.send` with a throwing transport mapped to an error value. */
-export function trySend(channel: Channel, message: RpcMessage): Result<null, { code: 'SEND_FAILED' }> {
-  try {
-    channel.send(message)
-    return { data: null, error: null }
-  } catch {
-    return { data: null, error: { code: 'SEND_FAILED' } }
-  }
 }
