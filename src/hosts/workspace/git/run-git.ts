@@ -1,11 +1,11 @@
 import { execFile, type ExecFileException } from 'node:child_process'
+import type { GitRunError } from '../../../shared/contract/workspace'
 import type { Result } from '../../../shared/rpc/contract'
 
-export type GitRunError = { code: 'GIT_MISSING' } | { code: 'GIT_FAILED'; exitCode?: number; stderr: string }
-
 export type GitRunOptions = {
+  /** Must exist: a missing `cwd` fails to spawn just like a missing git, so it also reports `GIT_MISSING`. */
   cwd?: string
-  /** The binary to start; the system `git` on `PATH` unless overridden. */
+  /** The binary to start; the system `git` on `PATH` unless a test overrides it. */
   executable?: string
 }
 
@@ -14,7 +14,7 @@ export function runGit(
   args: string[],
   { cwd, executable = 'git' }: GitRunOptions = {},
 ): Promise<Result<string, GitRunError>> {
-  return new Promise((resolve) => {
+  return new Promise((resolve): void => {
     execFile(executable, args, { cwd, encoding: 'utf8', windowsHide: true }, (error, stdout, stderr): void => {
       if (error) return resolve({ data: null, error: toGitRunError(error, stderr) })
       resolve({ data: stdout, error: null })

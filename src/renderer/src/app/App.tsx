@@ -1,18 +1,32 @@
 import { useEffect, useState, type ReactElement } from 'react'
-import type { GitVersion, GitVersionError, WorkspaceClient } from '../../../shared/contract/workspace'
-import type { CodedError } from '../../../shared/rpc/contract'
+import {
+  MINIMUM_GIT_VERSION,
+  type GitVersion,
+  type GitVersionError,
+  type WorkspaceClient,
+} from '../../../shared/contract/workspace'
+import type { CodedError, RpcFailure } from '../../../shared/rpc/contract'
 
 type HostConnection = { isConnected: boolean; error?: CodedError }
 
-type GitCheck = { version?: GitVersion; error?: CodedError }
+type GitCheckError = GitVersionError | RpcFailure
 
-const GIT_PROBLEM = {
-  GIT_MISSING: 'git was not found',
-  GIT_FAILED: 'git could not report its version',
-  GIT_VERSION_UNRECOGNIZED: 'git reported a version IReview does not recognize',
-} satisfies Record<Exclude<GitVersionError['code'], 'GIT_TOO_OLD'>, string>
+type GitCheck = { version?: GitVersion; error?: GitCheckError }
 
-const GIT_PROBLEMS = new Map<string, string>(Object.entries(GIT_PROBLEM))
+type GitErrorByCode = { [E in GitCheckError as E['code']]: E }
+
+type GitErrorCode = keyof GitErrorByCode
+
+const GIT_ERROR_TEXT: { [C in GitErrorCode]: (error: GitErrorByCode[C]) => string } = {
+  GIT_MISSING: () => needsGit('git was not found'),
+  GIT_FAILED: ({ stderr }) => needsGit(`git could not report its version: ${stderr.trim()}`),
+  GIT_VERSION_UNRECOGNIZED: () => needsGit('git reported a version IReview does not recognize'),
+  GIT_TOO_OLD: ({ version }) => needsGit(`git ${formatGitVersion(version)} is too old`),
+  INVALID_INPUT: gitUncheckedText,
+  UNKNOWN_METHOD: gitUncheckedText,
+  SEND_FAILED: gitUncheckedText,
+  INTERNAL: gitUncheckedText,
+}
 
 function hostStatusText({ isConnected, error }: HostConnection): string {
   if (error) return `Workspace host unavailable (${error.code})`
@@ -24,19 +38,23 @@ function formatGitVersion({ major, minor, patch }: GitVersion): string {
   return `${major}.${minor}.${patch}`
 }
 
+function needsGit(problem: string): string {
+  return `${problem}. IReview needs git ${MINIMUM_GIT_VERSION.major}.${MINIMUM_GIT_VERSION.minor} or newer.`
+}
+
+function gitUncheckedText({ code }: RpcFailure): string {
+  return `Could not check git (${code})`
+}
+
+function gitErrorText<C extends GitErrorCode>(error: GitErrorByCode[C] & { code: C }): string {
+  const toText: (error: GitErrorByCode[C]) => string = GIT_ERROR_TEXT[error.code]
+  return toText(error)
+}
+
 function gitStatusText({ version, error }: GitCheck): string {
-  if (error) return `${gitProblemText(error)}. IReview needs git 2.40 or newer.`
+  if (error) return gitErrorText(error)
   if (version) return `git ${formatGitVersion(version)}`
   return 'Checking git…'
-}
-
-function gitProblemText(error: CodedError): string {
-  if (isTooOld(error)) return `git ${formatGitVersion(error.version)} is too old`
-  return GIT_PROBLEMS.get(error.code) ?? `git could not be checked (${error.code})`
-}
-
-function isTooOld(error: CodedError): error is Extract<GitVersionError, { code: 'GIT_TOO_OLD' }> {
-  return error.code === 'GIT_TOO_OLD'
 }
 
 export function App({ workspaceHost }: { workspaceHost: Promise<WorkspaceClient> }): ReactElement {
