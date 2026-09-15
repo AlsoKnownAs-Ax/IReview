@@ -37,6 +37,13 @@ module.exports = {
       to: { path: '^(electron$|node_modules/electron/|src/(main|preload|hosts)/)' },
     },
     {
+      name: 'fixtures-only-in-tests',
+      severity: 'error',
+      comment: 'Test fixtures never ship: only test files import them.',
+      from: { path: '^src/', pathNot: '\\.test\\.tsx?$' },
+      to: { path: '^tests/' },
+    },
+    {
       name: 'not-to-unresolvable',
       severity: 'error',
       comment: 'Every import must resolve.',
