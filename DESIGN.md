@@ -27,6 +27,44 @@ colors:
   brand-secure: "#7a7fad"
   semantic-success: "#27a644"
   semantic-overlay: "#000000"
+  warning: "#d4a55a"
+  error: "#e0736f"
+  diff-added-bg: "#27a6441f"
+  diff-added-word: "#27a64447"
+  diff-added-gutter: "#4f9d64"
+  diff-removed-bg: "#e0736f1a"
+  diff-removed-word: "#e0736f40"
+  diff-removed-gutter: "#c0605c"
+  diff-modified-bg: "#7a8fd61a"
+  diff-modified-gutter: "#6f84c8"
+  ansi-black: "#34343a"
+  ansi-red: "#d4706c"
+  ansi-green: "#6fae7c"
+  ansi-yellow: "#c9a35c"
+  ansi-blue: "#7a8fd6"
+  ansi-magenta: "#b183c4"
+  ansi-cyan: "#5fa8ad"
+  ansi-white: "#d0d6e0"
+  ansi-bright-black: "#8a8f98"
+  ansi-bright-red: "#e8918c"
+  ansi-bright-green: "#8cc798"
+  ansi-bright-yellow: "#dcbd7e"
+  ansi-bright-blue: "#9aaae6"
+  ansi-bright-magenta: "#c9a0d8"
+  ansi-bright-cyan: "#80c0c4"
+  ansi-bright-white: "#f7f8f8"
+  syntax-comment: "#878c95"
+  syntax-keyword: "#a99bd0"
+  syntax-string: "#94b889"
+  syntax-number: "#d0a47c"
+  syntax-constant: "#d0a47c"
+  syntax-function: "#8fabd8"
+  syntax-type: "#7fb9b3"
+  syntax-variable: "#d0d6e0"
+  syntax-property: "#b4bcc8"
+  syntax-tag: "#cf8f8c"
+  syntax-operator: "#a4a9b2"
+  syntax-punctuation: "#9ba0a9"
 
 typography:
   display-xl:
@@ -107,6 +145,36 @@ typography:
     fontWeight: 400
     lineHeight: 1.50
     letterSpacing: 0
+  app-xs:
+    fontFamily: Inter
+    fontSize: 11px
+    fontWeight: 400
+    lineHeight: 1.45
+    letterSpacing: 0
+  app-sm:
+    fontFamily: Inter
+    fontSize: 12px
+    fontWeight: 400
+    lineHeight: 1.40
+    letterSpacing: 0
+  app-base:
+    fontFamily: Inter
+    fontSize: 13px
+    fontWeight: 400
+    lineHeight: 1.40
+    letterSpacing: 0
+  app-label:
+    fontFamily: Inter
+    fontSize: 13px
+    fontWeight: 500
+    lineHeight: 1.40
+    letterSpacing: 0
+  app-mono:
+    fontFamily: JetBrains Mono
+    fontSize: 13px
+    fontWeight: 400
+    lineHeight: 1.50
+    letterSpacing: 0
 
 rounded:
   xs: 4px
@@ -127,6 +195,14 @@ spacing:
   xl: 32px
   xxl: 48px
   section: 96px
+  app-xxs: 2px
+  app-xs: 4px
+  app-sm: 6px
+  app-md: 8px
+  app-lg: 12px
+  app-row-sm: 22px
+  app-row: 28px
+  app-row-lg: 36px
 
 components:
   button-primary:
@@ -546,3 +622,27 @@ Linear's depth is carried by surface ladder + hairline borders. The brand resist
 - Light mode is not documented because the marketing site does not ship a light theme.
 - Linear's actual product UI uses a richer color-tag palette (red, orange, yellow, green, blue, purple) for issue priorities and project labels — those colors live in the in-product surfaces shown in mockups.
 - The custom display, text, and mono families are proprietary; an open-source substitute is acceptable.
+
+## App
+
+The IReview desktop app reuses this system for dense tool chrome. Everything above still applies; the app-only tokens below are prefixed (`diff-*`, `ansi-*`, `syntax-*`, `app-*`) plain scalars so the token generator can group them.
+
+- **Dark only.** v1 ships the canvas and surface ladder above with no light theme. Don't add light variants of app tokens.
+- **One accent.** `{colors.primary}` stays the only chromatic UI color: focus, selection, primary action. App colors are muted, lower-chroma hues that sit below it and only carry meaning (diff state, terminal output, syntax, status), never decoration, fills or chrome.
+- **Fonts.** **Inter** substitutes Linear Display/Text for all UI; **JetBrains Mono** substitutes Linear Mono for editors, diffs and terminals. Fall back to `system-ui` and `ui-monospace`.
+- **Contrast.** Text-like tokens (`syntax-*`, `ansi-*` except `ansi-black`, `warning`, `error`) hold at least 4.5:1 on `{colors.canvas}` through `{colors.surface-2}`; `diff-*-gutter` markers hold at least 3:1. `ansi-black` is deliberately dark because TUIs paint it as a background; dim text uses `ansi-bright-black`.
+
+### Token Groups
+
+| Group | Keys | Use |
+|---|---|---|
+| `diff-*` | `added`, `removed`, `modified` × `-bg`, `-gutter`; `added-word`, `removed-word` | `-bg` and `-word` are `#rrggbbaa` tints composited over the editor surface (whole changed line, intra-line change); `-gutter` is the solid gutter bar and overview-ruler mark. |
+| `ansi-*` | `black` … `white`, `bright-black` … `bright-white` | The 16 terminal colors, mapped 1:1 into the terminal theme on `{colors.canvas}`. |
+| `syntax-*` | `comment`, `keyword`, `string`, `number`, `constant`, `function`, `type`, `variable`, `property`, `tag`, `operator`, `punctuation` | Editor highlighting. Unmapped scopes fall back to `syntax-variable`. |
+| `warning`, `error` | — | Status text, problem markers, failed checks, destructive confirmations. Success reuses `{colors.semantic-success}`. |
+
+### Density
+
+- UI text is 13px: `{typography.app-base}` by default, `{typography.app-label}` for tab titles, buttons and pane headers, `{typography.app-sm}` 12px for secondary meta and badges, `{typography.app-xs}` 11px for the status bar and counts only. Code and terminals use `{typography.app-mono}`.
+- Row heights: `{spacing.app-row-sm}` 22px for tree and list rows, `{spacing.app-row}` 28px for tabs, inputs and menu items, `{spacing.app-row-lg}` 36px for toolbars.
+- Gaps and padding use `{spacing.app-xxs}` 2px through `{spacing.app-lg}` 12px. Corners stay within `{rounded.xs}`–`{rounded.md}`. Display type and marketing spacing are not used in the app.
