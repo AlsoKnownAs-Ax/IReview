@@ -6,15 +6,14 @@ import { promisify } from 'node:util'
 
 const execFileAsync = promisify(execFile)
 
-const FIXED_DATE = '2026-01-01T00:00:00Z'
+/** Used as both author and committer, so every commit is reproducible. */
+const AUTHOR = { name: 'IReview Test', email: 'test@ireview.invalid', date: '2026-01-01T00:00:00Z' }
 
 export type TempRepo = {
   /** The temp directory holding the Main checkout, linked Worktrees and the empty global git config. */
   dir: string
   /** The Main checkout, on branch `main` with one commit. */
-  main: string
-  /** Runs git in `cwd` (the Main checkout by default) with the isolated config and resolves to its stdout. */
-  git: (args: string[], cwd?: string) => Promise<string>
+  mainCheckout: string
   /** Adds a linked Worktree on a new branch `name` at `<dir>/worktrees/<name>` and returns its path. */
   addWorktree: (name: string) => Promise<string>
   cleanup: () => Promise<void>
@@ -23,32 +22,33 @@ export type TempRepo = {
 /** Builds a temp repo whose git ignores the user's and system config and uses a fixed author and dates (SPEC §8). */
 export async function buildRepo(): Promise<TempRepo> {
   const dir = await mkdtemp(join(tmpdir(), 'ireview-repo-'))
-  const main = join(dir, 'main')
+  const mainCheckout = join(dir, 'main')
   const globalConfig = join(dir, 'gitconfig')
   await writeFile(globalConfig, '')
   const env = {
-    ...process.env,
+    // Drops inherited `GIT_DIR` and the like (set when tests run from a git hook), which would redirect every call.
+    ...Object.fromEntries(Object.entries(process.env).filter(([name]): boolean => !name.startsWith('GIT_'))),
     GIT_CONFIG_GLOBAL: globalConfig,
     GIT_CONFIG_NOSYSTEM: '1',
-    GIT_AUTHOR_NAME: 'IReview Test',
-    GIT_AUTHOR_EMAIL: 'test@ireview.invalid',
-    GIT_AUTHOR_DATE: FIXED_DATE,
-    GIT_COMMITTER_NAME: 'IReview Test',
-    GIT_COMMITTER_EMAIL: 'test@ireview.invalid',
-    GIT_COMMITTER_DATE: FIXED_DATE,
+    GIT_AUTHOR_NAME: AUTHOR.name,
+    GIT_AUTHOR_EMAIL: AUTHOR.email,
+    GIT_AUTHOR_DATE: AUTHOR.date,
+    GIT_COMMITTER_NAME: AUTHOR.name,
+    GIT_COMMITTER_EMAIL: AUTHOR.email,
+    GIT_COMMITTER_DATE: AUTHOR.date,
   }
-  const git = async (args: string[], cwd = main): Promise<string> =>
-    (await execFileAsync('git', args, { cwd, env, encoding: 'utf8' })).stdout
+  const git = async (args: string[], cwd = mainCheckout): Promise<void> => {
+    await execFileAsync('git', args, { cwd, env })
+  }
 
-  await git(['init', '--initial-branch=main', main], dir)
-  await writeFile(join(main, 'README.md'), '# Fixture\n')
+  await git(['init', '--initial-branch=main', mainCheckout], dir)
+  await writeFile(join(mainCheckout, 'README.md'), '# Fixture\n')
   await git(['add', 'README.md'])
   await git(['commit', '--message', 'Initial commit'])
 
   return {
     dir,
-    main,
-    git,
+    mainCheckout,
     async addWorktree(name): Promise<string> {
       const path = join(dir, 'worktrees', name)
       await git(['worktree', 'add', '-b', name, path])

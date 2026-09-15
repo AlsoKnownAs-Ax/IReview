@@ -39,6 +39,7 @@ export type ResolvedRepo = z.infer<typeof resolvedRepo>
 
 const resolveRepoError = z.discriminatedUnion('code', [
   ...gitRunError,
+  /** No folder can be read at `path`: missing, a file, not accessible, or gone before git answered. */
   z.object({ code: z.literal('PATH_NOT_FOUND'), path: z.string() }),
   z.object({ code: z.literal('NOT_A_REPO'), path: z.string() }),
   z.object({ code: z.literal('WSL_UNSUPPORTED'), path: z.string() }),
