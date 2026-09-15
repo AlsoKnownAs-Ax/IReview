@@ -1,5 +1,9 @@
 import { join } from 'node:path'
 import { app, BrowserWindow } from 'electron'
+import { APP_ORIGIN } from './config'
+import { serveRendererOverAppProtocol, registerAppScheme } from './security/app-protocol'
+
+registerAppScheme()
 
 function createWindow(): void {
   const window = new BrowserWindow({
@@ -17,11 +21,12 @@ function createWindow(): void {
   if (!app.isPackaged && devServerUrl) {
     void window.loadURL(devServerUrl)
   } else {
-    void window.loadFile(join(__dirname, '../renderer/index.html'))
+    void window.loadURL(`${APP_ORIGIN}/index.html`)
   }
 }
 
 void app.whenReady().then(() => {
+  serveRendererOverAppProtocol(join(__dirname, '../renderer'))
   createWindow()
 
   app.on('activate', () => {
