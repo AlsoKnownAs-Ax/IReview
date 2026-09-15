@@ -35,13 +35,14 @@ colors:
   diff-removed-bg: "#e0736f1a"
   diff-removed-word: "#e0736f40"
   diff-removed-gutter: "#c0605c"
-  diff-modified-bg: "#7a8fd61a"
-  diff-modified-gutter: "#6f84c8"
+  diff-modified-bg: "#5b93c41a"
+  diff-modified-word: "#5b93c433"
+  diff-modified-gutter: "#5b93c4"
   ansi-black: "#34343a"
   ansi-red: "#d4706c"
   ansi-green: "#6fae7c"
   ansi-yellow: "#c9a35c"
-  ansi-blue: "#7a8fd6"
+  ansi-blue: "#6f9ad6"
   ansi-magenta: "#b183c4"
   ansi-cyan: "#5fa8ad"
   ansi-white: "#d0d6e0"
@@ -49,12 +50,12 @@ colors:
   ansi-bright-red: "#e8918c"
   ansi-bright-green: "#8cc798"
   ansi-bright-yellow: "#dcbd7e"
-  ansi-bright-blue: "#9aaae6"
+  ansi-bright-blue: "#93b4e6"
   ansi-bright-magenta: "#c9a0d8"
   ansi-bright-cyan: "#80c0c4"
   ansi-bright-white: "#f7f8f8"
   syntax-comment: "#878c95"
-  syntax-keyword: "#a99bd0"
+  syntax-keyword: "#b99acb"
   syntax-string: "#94b889"
   syntax-number: "#d0a47c"
   syntax-constant: "#d0a47c"
@@ -195,11 +196,11 @@ spacing:
   xl: 32px
   xxl: 48px
   section: 96px
-  app-xxs: 2px
-  app-xs: 4px
-  app-sm: 6px
-  app-md: 8px
-  app-lg: 12px
+  app-gap-xxs: 2px
+  app-gap-xs: 4px
+  app-gap-sm: 6px
+  app-gap-md: 8px
+  app-gap-lg: 12px
   app-row-sm: 22px
   app-row: 28px
   app-row-lg: 36px
@@ -630,19 +631,18 @@ The IReview desktop app reuses this system for dense tool chrome. Everything abo
 - **Dark only.** v1 ships the canvas and surface ladder above with no light theme. Don't add light variants of app tokens.
 - **One accent.** `{colors.primary}` stays the only chromatic UI color: focus, selection, primary action. App colors are muted, lower-chroma hues that sit below it and only carry meaning (diff state, terminal output, syntax, status), never decoration, fills or chrome.
 - **Fonts.** **Inter** substitutes Linear Display/Text for all UI; **JetBrains Mono** substitutes Linear Mono for editors, diffs and terminals. Fall back to `system-ui` and `ui-monospace`.
-- **Contrast.** Text-like tokens (`syntax-*`, `ansi-*` except `ansi-black`, `warning`, `error`) hold at least 4.5:1 on `{colors.canvas}` through `{colors.surface-2}`; `diff-*-gutter` markers hold at least 3:1. `ansi-black` is deliberately dark because TUIs paint it as a background; dim text uses `ansi-bright-black`.
+- **Contrast.** Text-like tokens (`syntax-*`, `ansi-*` except `{colors.ansi-black}`, `{colors.warning}`, `{colors.error}`) hold at least 4.5:1 on `{colors.canvas}` through `{colors.surface-2}`, and on `diff-*-bg` tints over those surfaces; `diff-*-gutter` markers hold at least 3:1. `-word` tints mark short spans and may drop dim text such as `{colors.syntax-comment}` to about 3.6:1. `{colors.ansi-black}` is deliberately dark because TUIs paint it as a background; dim text uses `{colors.ansi-bright-black}`.
 
 ### Token Groups
 
 | Group | Keys | Use |
 |---|---|---|
-| `diff-*` | `added`, `removed`, `modified` × `-bg`, `-gutter`; `added-word`, `removed-word` | `-bg` and `-word` are `#rrggbbaa` tints composited over the editor surface (whole changed line, intra-line change); `-gutter` is the solid gutter bar and overview-ruler mark. |
-| `ansi-*` | `black` … `white`, `bright-black` … `bright-white` | The 16 terminal colors, mapped 1:1 into the terminal theme on `{colors.canvas}`. |
-| `syntax-*` | `comment`, `keyword`, `string`, `number`, `constant`, `function`, `type`, `variable`, `property`, `tag`, `operator`, `punctuation` | Editor highlighting. Unmapped scopes fall back to `syntax-variable`. |
+| `diff-*` | `added`, `removed`, `modified` × `-bg`, `-word`, `-gutter` | `-bg` (changed line) and `-word` (intra-line change) are `#rrggbbaa` tints composited over the editor background (`{colors.canvas}` to `{colors.surface-2}`); `-gutter` is the solid change marker. |
+| `ansi-*` | `black` … `white`, `bright-black` … `bright-white` | The 16 terminal colors. |
+| `syntax-*` | `comment`, `keyword`, `string`, `number`, `constant`, `function`, `type`, `variable`, `property`, `tag`, `operator`, `punctuation` | Editor highlighting. `number` and `constant` share a value on purpose. |
 | `warning`, `error` | — | Status text, problem markers, failed checks, destructive confirmations. Success reuses `{colors.semantic-success}`. |
 
 ### Density
 
 - UI text is 13px: `{typography.app-base}` by default, `{typography.app-label}` for tab titles, buttons and pane headers, `{typography.app-sm}` 12px for secondary meta and badges, `{typography.app-xs}` 11px for the status bar and counts only. Code and terminals use `{typography.app-mono}`.
-- Row heights: `{spacing.app-row-sm}` 22px for tree and list rows, `{spacing.app-row}` 28px for tabs, inputs and menu items, `{spacing.app-row-lg}` 36px for toolbars.
-- Gaps and padding use `{spacing.app-xxs}` 2px through `{spacing.app-lg}` 12px. Corners stay within `{rounded.xs}`–`{rounded.md}`. Display type and marketing spacing are not used in the app.
+- Row heights `{spacing.app-row-sm}` 22px (tree and list rows), `{spacing.app-row}` 28px (tabs, inputs, menu items), `{spacing.app-row-lg}` 36px (toolbars). Gaps and padding use the separate `app-gap-*` scale, `{spacing.app-gap-xxs}` 2px through `{spacing.app-gap-lg}` 12px, which adds 2px half-steps to the 4px base unit; don't mix it with the marketing `spacing` keys. Corners stay within `{rounded.xs}`–`{rounded.md}`.
