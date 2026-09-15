@@ -2,8 +2,10 @@ import { join } from 'node:path'
 import { app, BrowserWindow } from 'electron'
 import { APP_ORIGIN } from './config'
 import { serveRendererOverAppProtocol, registerAppScheme } from './security/app-protocol'
+import { lockDownWebContents } from './security/lockdown'
 
 registerAppScheme()
+lockDownWebContents()
 
 function createWindow(): void {
   const window = new BrowserWindow({
