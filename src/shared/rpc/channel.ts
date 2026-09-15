@@ -30,13 +30,12 @@ export const clientMessage = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('cancel'), id: messageId }),
 ])
 /**
- * Sent by the host. A stream sends an `item` per value, then one `end` whose `error` is null when it completed. A
+ * Sent by the host. A stream sends an `item` per value, then a `response` whose `error` is null when it completed. A
  * subscription is accepted or rejected with a `response`, then gets an `event` per payload.
  */
 export const hostMessage = z.discriminatedUnion('kind', [
   responseMessage,
   z.object({ kind: z.literal('item'), id: messageId, data: z.unknown() }),
-  z.object({ kind: z.literal('end'), id: messageId, error: z.looseObject({ code: z.string() }).nullable() }),
   z.object({ kind: z.literal('event'), id: messageId, payload: z.unknown() }),
 ])
 export type RequestMessage = z.infer<typeof requestMessage>

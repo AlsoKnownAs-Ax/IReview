@@ -14,15 +14,13 @@ import type {
 
 type Member = Contract[string]
 type RpcHandler = (input: unknown) => RpcResult | Promise<RpcResult>
-type StreamItems = AsyncIterator<unknown, StreamEnd<unknown>>
-type StreamHandler = (input: unknown, signal: AbortSignal) => StreamItems
-type StreamMember = Extract<Member, { kind: 'stream' }>
-/** A contract member together with the host's handler for it, if the host has one. */
-type Method =
+type StreamHandler = (input: unknown, signal: AbortSignal) => AsyncIterator<unknown, StreamEnd<unknown>>
+/** A contract member together with the host's handler for it; events have none. */
+type ServedMember =
   | (Extract<Member, { kind: 'rpc' }> & { handler?: RpcHandler })
-  | (StreamMember & { handler?: StreamHandler })
+  | (Extract<Member, { kind: 'stream' }> & { handler?: StreamHandler })
   | Extract<Member, { kind: 'event' }>
-type Methods = Map<string, Method>
+type ServedMembers = Map<string, ServedMember>
 type StreamMessage = Extract<ClientMessage, { kind: 'stream' }>
 type Issue = Extract<RpcFailure, { code: 'INVALID_INPUT' }>['issues'][number]
 type Receivers = {
@@ -30,7 +28,8 @@ type Receivers = {
 }
 
 export type EmitFailure =
-  Extract<RpcFailure, { code: 'UNKNOWN_METHOD' | 'SEND_FAILED' }> | { code: 'INVALID_PAYLOAD'; issues: Issue[] }
+  | Extract<RpcFailure, { code: 'UNKNOWN_METHOD' | 'SEND_FAILED' | 'INTERNAL' }>
+  | { code: 'INVALID_PAYLOAD'; issues: Issue[] }
 
 export type Server<C extends Contract> = {
   /** Validates `payload`, then sends it to every subscription to `event`. Nothing is sent if validation fails. */
@@ -42,93 +41,101 @@ export type Server<C extends Contract> = {
 /**
  * Answers requests, streams and subscriptions on `channel` (SPEC §5.2). Anything that goes wrong reaches the client as
  * a coded error value; an unexpected throw or an off-contract result, item or error becomes a bare `INTERNAL`, so no
- * message or stack leaks.
+ * message or stack leaks. A stream sends an `item` per value and then settles with a `response`, as a request does.
  */
 export function serve<C extends Contract>(contract: C, handlers: Handlers<C>, channel: Channel): Server<C> {
-  const methods = toMethods(contract, handlers)
+  const members = toServedMembers(contract, handlers)
   const streams = new Map<number, AbortController>()
   /** The event each subscription id is subscribed to. */
   const subscriptions = new Map<number, string>()
 
-  /** Ids already in use belong to the open stream or subscription, so a peer reusing one is ignored. */
-  function inUse(id: number): boolean {
+  /** An id in use belongs to its open stream or subscription, so a peer reusing it is ignored. */
+  function isOpen(id: number): boolean {
     return streams.has(id) || subscriptions.has(id)
   }
 
-  /** Once a stream is cancelled, nothing further is sent for it. */
+  /** Sends the `response` that settles `id`; one the transport cannot carry becomes a bare `INTERNAL`. */
+  function settle(id: number, result: RpcResult): void {
+    const { error } = channel.send({ kind: 'response', id, ...result })
+    if (error) channel.send({ kind: 'response', id, ...failure({ code: 'INTERNAL' }) })
+  }
+
   async function runStream(message: StreamMessage): Promise<void> {
-    if (inUse(message.id)) return
+    if (isOpen(message.id)) return
     const controller = new AbortController()
     streams.set(message.id, controller)
-    const { error } = await pumpSafely(message, controller.signal)
+    const result = await safely(() => pump(message, controller.signal))
+    // A cancelled stream sends nothing further.
     if (controller.signal.aborted) return
     streams.delete(message.id)
-    channel.send({ kind: 'end', id: message.id, error })
-  }
-
-  /** Like `respondSafely`, for a stream: a throw while it runs ends it with `INTERNAL`. */
-  async function pumpSafely(message: StreamMessage, signal: AbortSignal): Promise<RpcResult> {
-    try {
-      return await pump(message, signal)
-    } catch {
-      return failure({ code: 'INTERNAL' })
-    }
-  }
-
-  async function pump({ id, method, input }: StreamMessage, signal: AbortSignal): Promise<RpcResult> {
-    const target = methods.get(method)
-    if (target?.kind !== 'stream' || !target.handler) return failure({ code: 'UNKNOWN_METHOD', method })
-
-    const { data: parsedInput, error } = parseInput(target, input)
-    if (error) return failure(error)
-
-    const items = target.handler(parsedInput, signal)
-    const end = await sendItems(target, items, id, signal)
-    // Closes a handler that stopped early, even one that ignores `signal`; harmless once it has finished.
-    await items.return?.()
-    return end
+    settle(message.id, result)
   }
 
   /** Sends each item the handler yields until it finishes or `signal` aborts, then resolves to how it ended. */
-  async function sendItems(
-    member: StreamMember,
-    items: StreamItems,
-    id: number,
-    signal: AbortSignal,
-  ): Promise<RpcResult> {
-    for (;;) {
-      const step = await items.next()
-      // What a cancelled stream resolves to is never sent.
-      if (signal.aborted) return { data: null, error: null }
-      if (step.done) return toStreamEnd(member, step.value)
-      const { success, data: item } = member.item.safeParse(step.value)
-      if (!success) return failure({ code: 'INTERNAL' })
-      const { error } = channel.send({ kind: 'item', id, data: item })
-      if (error) return failure({ code: 'INTERNAL' })
+  async function pump({ id, method, input }: StreamMessage, signal: AbortSignal): Promise<RpcResult> {
+    const member = members.get(method)
+    if (member?.kind !== 'stream' || !member.handler) return failure({ code: 'UNKNOWN_METHOD', method })
+
+    const { data: parsedInput, error } = parseInput(member, input)
+    if (error) return failure(error)
+
+    const items = member.handler(parsedInput, signal)
+    try {
+      for (;;) {
+        const step = await items.next()
+        // What a cancelled stream resolves to is never sent.
+        if (signal.aborted) return { data: null, error: null }
+        if (step.done) return toStreamEnd(member, step.value)
+        const { success, data: item } = member.item.safeParse(step.value)
+        if (!success) return failure({ code: 'INTERNAL' })
+        const { error: sendFailure } = channel.send({ kind: 'item', id, data: item })
+        if (sendFailure) return failure({ code: 'INTERNAL' })
+      }
+    } finally {
+      // Closes a handler that stopped early, even one that ignores `signal`; harmless once it has finished.
+      await items.return?.()
     }
   }
 
-  const receivers: Receivers = {
-    request: async ({ id, ...request }): Promise<void> => {
-      const { error } = channel.send({ kind: 'response', id, ...(await respondSafely(methods, request)) })
-      if (error) channel.send({ kind: 'response', id, ...failure({ code: 'INTERNAL' }) })
-    },
+  function emitSafely(event: string, payload: unknown): Result<null, EmitFailure> {
+    try {
+      return emit(event, payload)
+    } catch {
+      // A payload schema's refinement or transform threw.
+      return { data: null, error: { code: 'INTERNAL' } }
+    }
+  }
+
+  function emit(event: string, payload: unknown): Result<null, EmitFailure> {
+    const member = members.get(event)
+    if (member?.kind !== 'event') return { data: null, error: { code: 'UNKNOWN_METHOD', method: event } }
+
+    const { success, data: parsedPayload, error } = member.payload.safeParse(payload)
+    if (!success) return { data: null, error: { code: 'INVALID_PAYLOAD', issues: error.issues.map(toIssue) } }
+
+    const failedSend = [...subscriptions]
+      .filter(([, subscribed]): boolean => subscribed === event)
+      .map(([id]): ReturnType<Channel['send']> => channel.send({ kind: 'event', id, payload: parsedPayload }))
+      .find((sent): boolean => sent.error !== null)
+    if (failedSend) return { data: null, error: { code: 'SEND_FAILED' } }
+    return { data: null, error: null }
+  }
+
+  const receivers = {
+    request: async ({ id, ...request }): Promise<void> => settle(id, await safely(() => answer(members, request))),
     stream: runStream,
     subscribe: ({ id, event }): void => {
-      if (inUse(id)) return
-      if (methods.get(event)?.kind !== 'event') {
-        channel.send({ kind: 'response', id, ...failure({ code: 'UNKNOWN_METHOD', method: event }) })
-        return
-      }
+      if (isOpen(id)) return
+      if (members.get(event)?.kind !== 'event') return settle(id, failure({ code: 'UNKNOWN_METHOD', method: event }))
       subscriptions.set(id, event)
-      channel.send({ kind: 'response', id, data: null, error: null })
+      settle(id, { data: null, error: null })
     },
     cancel: ({ id }): void => {
       streams.get(id)?.abort()
       streams.delete(id)
       subscriptions.delete(id)
     },
-  }
+  } satisfies Receivers
 
   const stopListening = channel.onMessage((raw): void => {
     const { success, data: message } = clientMessage.safeParse(raw)
@@ -139,57 +146,47 @@ export function serve<C extends Contract>(contract: C, handlers: Handlers<C>, ch
   })
 
   return {
-    emit: (event: string, payload: unknown): Result<null, EmitFailure> => {
-      const target = methods.get(event)
-      if (target?.kind !== 'event') return { data: null, error: { code: 'UNKNOWN_METHOD', method: event } }
-
-      const { success, data: parsedPayload, error } = target.payload.safeParse(payload)
-      if (!success) return { data: null, error: { code: 'INVALID_PAYLOAD', issues: error.issues.map(toIssue) } }
-
-      const [sendFailure] = [...subscriptions]
-        .filter(([, subscribed]) => subscribed === event)
-        .map(([id]) => channel.send({ kind: 'event', id, payload: parsedPayload }))
-        .flatMap((sent) => sent.error ?? [])
-      if (sendFailure) return { data: null, error: sendFailure }
-      return { data: null, error: null }
-    },
+    emit: emitSafely,
     stop: (): void => {
       stopListening()
       subscriptions.clear()
-      streams.forEach((controller, id) => {
+      streams.forEach((controller, id): void => {
         controller.abort()
-        channel.send({ kind: 'end', id, error: { code: 'STOPPED' } })
+        settle(id, { data: null, error: { code: 'STOPPED' } })
       })
       streams.clear()
     },
   }
 }
 
-function toMethods<C extends Contract>(contract: C, handlers: Handlers<C>): Methods {
+function toServedMembers<C extends Contract>(contract: C, handlers: Handlers<C>): ServedMembers {
   const handlerFor = new Map(Object.entries(handlers))
-  const entries = Object.entries(contract).map(([name, member]) => [name, { ...member, handler: handlerFor.get(name) }])
-  return new Map(entries as [string, Method][])
+  const entries = Object.entries(contract).map(([name, member]): [string, unknown] => [
+    name,
+    { ...member, handler: handlerFor.get(name) },
+  ])
+  return new Map(entries as [string, ServedMember][])
 }
 
-/** The one place a request's throw is caught: from a handler, a schema refinement or a handler that breaks its types. */
-async function respondSafely(methods: Methods, request: Omit<RequestMessage, 'id'>): Promise<RpcResult> {
+/** The one place a handler's throw is caught: from a handler, a schema refinement or a handler that breaks its types. */
+async function safely(run: () => Promise<RpcResult>): Promise<RpcResult> {
   try {
-    return await respond(methods, request)
+    return await run()
   } catch {
     return failure({ code: 'INTERNAL' })
   }
 }
 
-async function respond(methods: Methods, { method, input }: Omit<RequestMessage, 'id'>): Promise<RpcResult> {
-  const target = methods.get(method)
-  if (target?.kind !== 'rpc' || !target.handler) return failure({ code: 'UNKNOWN_METHOD', method })
+async function answer(members: ServedMembers, { method, input }: Omit<RequestMessage, 'id'>): Promise<RpcResult> {
+  const member = members.get(method)
+  if (member?.kind !== 'rpc' || !member.handler) return failure({ code: 'UNKNOWN_METHOD', method })
 
-  const { data: parsedInput, error } = parseInput(target, input)
+  const { data: parsedInput, error } = parseInput(member, input)
   if (error) return failure(error)
 
-  const outcome = await target.handler(parsedInput)
-  if (outcome.error) return toContractError(target, outcome.error)
-  return toContractResult(target, outcome.data)
+  const outcome = await member.handler(parsedInput)
+  if (outcome.error) return toContractError(member, outcome.error)
+  return toContractResult(member, outcome.data)
 }
 
 function parseInput(member: { input: ZodType }, input: unknown): Result<unknown, RpcFailure> {
@@ -198,9 +195,12 @@ function parseInput(member: { input: ZodType }, input: unknown): Result<unknown,
   return { data, error: null }
 }
 
+/** A stream completes by returning nothing or an empty `Result`; anything else that isn't a member error is `INTERNAL`. */
 function toStreamEnd(member: { error: ZodType<CodedError> }, end: StreamEnd<unknown>): RpcResult {
-  if (!end?.error) return { data: null, error: null }
-  return toContractError(member, end.error)
+  if (end === undefined) return { data: null, error: null }
+  if (end.error) return toContractError(member, end.error)
+  if (end.data !== null) return failure({ code: 'INTERNAL' })
+  return { data: null, error: null }
 }
 
 function toContractError(member: { error: ZodType<CodedError> }, error: unknown): RpcResult {

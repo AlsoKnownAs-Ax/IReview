@@ -155,6 +155,13 @@ test.each([
       return { data: null, error: { code: 'ENOENT' } }
     },
   ],
+  [
+    'an end that is not a Result',
+    async function* (): AsyncGenerator<number, number> {
+      yield 1
+      return 42
+    },
+  ],
 ])('%s from a stream handler ends the stream with a bare INTERNAL', async (_, count) => {
   // @ts-expect-error -- handlers are not bound by the contract's types at runtime
   const { client } = connect(contract, { count })
@@ -163,6 +170,39 @@ test.each([
     { data: 1, error: null },
     { data: null, error: { code: 'INTERNAL' } },
   ])
+})
+
+test.each([
+  [
+    'an item',
+    async function* (): AsyncGenerator<unknown> {
+      yield 1
+      yield () => 'functions cannot be cloned'
+    },
+  ],
+  [
+    'an error',
+    async function* (): AsyncGenerator<unknown, { data: null; error: { code: 'X'; detail: unknown } }> {
+      yield 1
+      return { data: null, error: { code: 'X', detail: () => 'functions cannot be cloned' } }
+    },
+  ],
+])('%s the channel cannot carry ends the stream with INTERNAL', async (_, inspect) => {
+  const error = z.object({ code: z.literal('X'), detail: z.unknown() })
+  const loose = { inspect: stream({ input: z.object({}), item: z.unknown(), error }) }
+  const { client } = connect(loose, { inspect })
+
+  expect(await collect(client.inspect({}))).toEqual([
+    { data: 1, error: null },
+    { data: null, error: { code: 'INTERNAL' } },
+  ])
+})
+
+test('input the channel cannot carry ends the stream with SEND_FAILED', async () => {
+  const { client } = connect(contract, { count: async function* () {} })
+  const input = { to: 1, onDone: () => {} }
+
+  expect(await collect(client.count(input))).toEqual([{ data: null, error: { code: 'SEND_FAILED' } }])
 })
 
 /** Lets every message already sent over the in-memory channel arrive. */
@@ -193,8 +233,11 @@ test('subscribing to an event the host does not serve is an UNKNOWN_METHOD error
   expect(result).toEqual({ data: null, error: { code: 'UNKNOWN_METHOD', method: 'discarded' } })
 })
 
-test('emitting a payload the schema rejects is an error and sends nothing; one the channel cannot carry is SEND_FAILED', async () => {
-  const loose = { ...contract, inspected: event({ payload: z.unknown() }) }
+test('emit returns every failure as an error: a rejected payload sends nothing', async () => {
+  const throwing = z.unknown().refine((): boolean => {
+    throw new Error('ENOENT: C:\\secret\\repo')
+  })
+  const loose = { ...contract, inspected: event({ payload: z.unknown() }), checked: event({ payload: throwing }) }
   const { client, server, sent } = connect(loose, { count: async function* () {} })
   await client.headChanged(() => {})
   await client.inspected(() => {})
@@ -203,4 +246,5 @@ test('emitting a payload the schema rejects is an error and sends nothing; one t
   expect(server.emit('headChanged', { head: 42 }).error).toMatchObject({ code: 'INVALID_PAYLOAD' })
   expect(sent.filter(({ kind }) => kind === 'event')).toHaveLength(0)
   expect(server.emit('inspected', () => 'functions cannot be cloned').error).toEqual({ code: 'SEND_FAILED' })
+  expect(server.emit('checked', null).error).toEqual({ code: 'INTERNAL' })
 })
