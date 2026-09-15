@@ -14,6 +14,6 @@ const handlers: Handlers<typeof workspaceContract> = {
 // Main hands over one port per renderer page load (SPEC §5.1–5.2); each is served until the page lets go of it.
 process.parentPort.on('message', ({ ports: [port] }): void => {
   if (!port) return
-  const stop = serve(workspaceContract, handlers, createMessagePortMainChannel(port))
+  const { stop } = serve(workspaceContract, handlers, createMessagePortMainChannel(port))
   port.on('close', stop)
 })
