@@ -1,7 +1,7 @@
 import { expect, test, vi } from 'vitest'
 import { z } from 'zod'
 import { createClient } from './client'
-import type { Channel } from './channel'
+import type { Channel, RpcMessage } from './channel'
 import { rpc, RpcError, type Contract, type Handlers } from './contract'
 import { createInMemoryChannelPair } from './in-memory-channel'
 import { serve } from './server'
@@ -13,7 +13,7 @@ const contract = {
 /** Serves `handlers` and returns a client, plus every message the server put on the wire. */
 function connect(handlers: Handlers<typeof contract>) {
   const [clientEnd, serverEnd] = createInMemoryChannelPair()
-  const sent: Parameters<Channel['send']>[0][] = []
+  const sent: RpcMessage[] = []
   const recordingEnd: Channel = {
     onMessage: serverEnd.onMessage,
     send(message) {
@@ -43,9 +43,9 @@ test('input that fails the schema is rejected before the handler runs', async ()
 test('a method the host does not serve is rejected', async () => {
   const [clientEnd, serverEnd] = createInMemoryChannelPair()
   serve(contract, { checkout: () => ({ head: 'unused' }) }, serverEnd)
-  const newer = { ...contract, discard: rpc({ input: z.object({}), result: z.null() }) }
+  const newerContract = { ...contract, discard: rpc({ input: z.object({}), result: z.null() }) }
 
-  await expect(createClient(newer, clientEnd).discard({})).rejects.toMatchObject({ code: 'UNKNOWN_METHOD' })
+  await expect(createClient(newerContract, clientEnd).discard({})).rejects.toMatchObject({ code: 'UNKNOWN_METHOD' })
 })
 
 test('concurrent calls each resolve with their own response, even when answered out of order', async () => {
@@ -79,4 +79,19 @@ test('an unexpected error becomes INTERNAL without leaking its message or stack'
 
   await expect(client.checkout({ branch: 'main' })).rejects.toMatchObject({ code: 'INTERNAL' })
   expect(sent).toEqual([{ kind: 'error', id: expect.any(Number), code: 'INTERNAL', message: 'Internal error' }])
+})
+
+test('a handler result that fails the result schema becomes INTERNAL', async () => {
+  // @ts-expect-error -- handlers are not bound by the contract's types at runtime
+  const { client } = connect({ checkout: () => ({ head: 42 }) })
+
+  await expect(client.checkout({ branch: 'main' })).rejects.toMatchObject({ code: 'INTERNAL' })
+})
+
+test('a result the channel cannot carry becomes INTERNAL', async () => {
+  const [clientEnd, serverEnd] = createInMemoryChannelPair()
+  const loose = { inspect: rpc({ input: z.object({}), result: z.unknown() }) }
+  serve(loose, { inspect: () => () => 'functions cannot be cloned' }, serverEnd)
+
+  await expect(createClient(loose, clientEnd).inspect({})).rejects.toMatchObject({ code: 'INTERNAL' })
 })

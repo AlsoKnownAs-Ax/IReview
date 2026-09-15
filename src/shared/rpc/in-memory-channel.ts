@@ -4,7 +4,7 @@ type Listener = (message: unknown) => void
 
 /** Two connected channels for tests. Like a MessagePort, delivery is asynchronous and structured-cloned. */
 export function createInMemoryChannelPair(): [Channel, Channel] {
-  const end = (own: Set<Listener>, peer: Set<Listener>): Channel => ({
+  const channelEnd = (own: Set<Listener>, peer: Set<Listener>): Channel => ({
     send(message) {
       const copy = structuredClone(message)
       queueMicrotask(() => peer.forEach((listener) => listener(copy)))
@@ -15,5 +15,5 @@ export function createInMemoryChannelPair(): [Channel, Channel] {
     },
   })
   const [a, b] = [new Set<Listener>(), new Set<Listener>()]
-  return [end(a, b), end(b, a)]
+  return [channelEnd(a, b), channelEnd(b, a)]
 }
