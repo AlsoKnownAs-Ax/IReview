@@ -2,7 +2,10 @@ import { join } from 'node:path'
 import { app, BrowserWindow } from 'electron'
 import { APP_ORIGIN } from './config'
 import { serveRendererOverAppProtocol, registerAppScheme } from './security/app-protocol'
+import { enforceCspOnDevServer } from './security/csp'
 import { lockDownWebContents } from './security/lockdown'
+
+const devServerUrl = (!app.isPackaged && process.env['ELECTRON_RENDERER_URL']) || undefined
 
 registerAppScheme()
 lockDownWebContents()
@@ -19,16 +22,12 @@ function createWindow(): void {
     },
   })
 
-  const devServerUrl = process.env['ELECTRON_RENDERER_URL']
-  if (!app.isPackaged && devServerUrl) {
-    void window.loadURL(devServerUrl)
-  } else {
-    void window.loadURL(`${APP_ORIGIN}/index.html`)
-  }
+  void window.loadURL(devServerUrl ?? `${APP_ORIGIN}/index.html`)
 }
 
 void app.whenReady().then(() => {
   serveRendererOverAppProtocol(join(__dirname, '../renderer'))
+  if (devServerUrl) enforceCspOnDevServer(devServerUrl)
   createWindow()
 
   app.on('activate', () => {
