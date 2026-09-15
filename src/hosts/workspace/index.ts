@@ -2,9 +2,11 @@ import { workspaceContract } from '../../shared/contract/workspace'
 import type { Handlers } from '../../shared/rpc/contract'
 import { createMessagePortMainChannel } from '../../shared/rpc/port-channel'
 import { serve } from '../../shared/rpc/server'
+import { detectGitVersion } from './git/git-version'
 
 const handlers: Handlers<typeof workspaceContract> = {
   ping: () => ({ data: 'pong', error: null }),
+  gitVersion: detectGitVersion,
 }
 
 // Main hands over one port per renderer page load (SPEC §5.1–5.2); each is served until the page lets go of it.
