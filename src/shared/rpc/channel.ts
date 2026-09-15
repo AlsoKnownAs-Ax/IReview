@@ -19,9 +19,31 @@ export const responseMessage = z.object({
   data: z.unknown(),
   error: z.looseObject({ code: z.string() }).nullable(),
 })
+/**
+ * Sent by the client. `stream` opens a stream and `subscribe` subscribes to an event; the host's messages for either
+ * carry the same id, and `cancel` stops either by that id.
+ */
+export const clientMessage = z.discriminatedUnion('kind', [
+  requestMessage,
+  z.object({ kind: z.literal('stream'), id: messageId, method: z.string(), input: z.unknown() }),
+  z.object({ kind: z.literal('subscribe'), id: messageId, event: z.string() }),
+  z.object({ kind: z.literal('cancel'), id: messageId }),
+])
+/**
+ * Sent by the host. A stream sends an `item` per value, then one `end` whose `error` is null when it completed. A
+ * subscription is accepted or rejected with a `response`, then gets an `event` per payload.
+ */
+export const hostMessage = z.discriminatedUnion('kind', [
+  responseMessage,
+  z.object({ kind: z.literal('item'), id: messageId, data: z.unknown() }),
+  z.object({ kind: z.literal('end'), id: messageId, error: z.looseObject({ code: z.string() }).nullable() }),
+  z.object({ kind: z.literal('event'), id: messageId, payload: z.unknown() }),
+])
 export type RequestMessage = z.infer<typeof requestMessage>
 export type ResponseMessage = z.infer<typeof responseMessage>
-export type RpcMessage = RequestMessage | ResponseMessage
+export type ClientMessage = z.infer<typeof clientMessage>
+export type HostMessage = z.infer<typeof hostMessage>
+export type RpcMessage = ClientMessage | HostMessage
 
 export type SendFailed = Extract<RpcFailure, { code: 'SEND_FAILED' }>
 
