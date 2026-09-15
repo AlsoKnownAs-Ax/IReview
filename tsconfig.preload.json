@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2023",
-    "lib": ["ES2023"],
+    "lib": ["ES2023", "DOM"],
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "types": ["node"],
@@ -11,13 +11,5 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": [
-    "electron.vite.config.ts",
-    "vitest.config.ts",
-    "src/main/**/*",
-    "src/hosts/**/*",
-    "src/shared/**/*",
-    "playwright.config.ts",
-    "tests/**/*"
-  ]
+  "include": ["src/preload/**/*"]
 }
