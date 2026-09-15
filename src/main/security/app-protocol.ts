@@ -10,7 +10,7 @@ export function registerAppScheme(): void {
 }
 
 /** Serves the renderer bundle in `root` over `app://`. Anything else is a 404. */
-export function handleAppProtocol(root: string): void {
+export function serveRendererOverAppProtocol(root: string): void {
   protocol.handle(APP_SCHEME, async (request) => {
     const file = resolveAppUrl(request.url, root)
     if (!file) return notFound()

@@ -31,6 +31,7 @@ describe('resolveAppUrl', () => {
   test.each([
     ['encoded slashes', 'app://ireview/..%2f..%2fmain%2findex.js'],
     ['encoded backslashes', 'app://ireview/..%5c..%5cmain%5cindex.js'],
+    ['Windows separators', 'app://ireview/assets\\..\\..\\main\\index.js'],
     ['encoded drive letters', 'app://ireview/C:%5cWindows%5cwin.ini'],
     ['encoded NUL bytes', 'app://ireview/index.html%00.js'],
     ['malformed encodings', 'app://ireview/%E0%A4%A'],

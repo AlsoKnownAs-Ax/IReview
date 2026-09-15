@@ -344,7 +344,7 @@ Order is fixed (D29): the local review loop is dogfoodable before GitHub work st
 
 - Scaffold (electron-vite, TS strict, ESLint, dependency-cruiser), CI on Windows + macOS.
 - `DESIGN.md` App section and token generator (CSS variables + TS module).
-- Security baseline (§5.1), rpc library with three transports, broker, supervisor.
+- Security baseline (§5.1; Electron fuses deferred to M6), rpc library with three transports, broker, supervisor.
 - Registry: welcome Window, open folder → new Window, same Repo → focus, non-git → `git init` flow, linked Worktree → Repo Window.
 - Command palette, keymap resolver, `keymap.json` hot reload.
 
@@ -419,8 +419,9 @@ real GitHub (opt-in).
 ### M6 — Restore and release
 
 - Full restore (§3.9) with mode reset after history replay, 30 s scrollback snapshots, state migrations, quit
-  confirmation (foreground process detection on macOS, process tree on Windows), Electron fuses (§5.1), electron-builder artifacts
-  (macOS arm64 + x64 dmg/zip, Windows x64 NSIS), tag-triggered release workflow, packaged smoke test.
+  confirmation (foreground process detection on macOS, process tree on Windows), Electron fuses (§5.1),
+  electron-builder artifacts (macOS arm64 + x64 dmg/zip, Windows x64 NSIS), tag-triggered release workflow, packaged
+  smoke test.
 
 **Accept:** relaunch restores Layout and Terminals (history, then a fresh prompt in the right cwd); after a hard kill
 the restore is at most 30 s stale; quitting with a running process prompts; all three artifacts launch on clean

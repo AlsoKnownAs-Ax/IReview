@@ -1,6 +1,6 @@
 import { join } from 'node:path'
 import { app, BrowserWindow } from 'electron'
-import { handleAppProtocol, registerAppScheme } from './security/app-protocol'
+import { serveRendererOverAppProtocol, registerAppScheme } from './security/app-protocol'
 import { APP_ORIGIN } from './security/app-url'
 
 registerAppScheme()
@@ -26,7 +26,7 @@ function createWindow(): void {
 }
 
 void app.whenReady().then(() => {
-  handleAppProtocol(join(__dirname, '../renderer'))
+  serveRendererOverAppProtocol(join(__dirname, '../renderer'))
   createWindow()
 
   app.on('activate', () => {
