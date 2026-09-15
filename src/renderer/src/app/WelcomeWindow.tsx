@@ -1,11 +1,13 @@
-import type { ReactElement } from 'react'
+import { useId, type ReactElement } from 'react'
 
 /** The Window shown on launch, before a Repo is opened (SPEC §3.1). */
 export function WelcomeWindow(): ReactElement {
+  const recentReposHeadingId = useId()
+
   return (
     <div className="mx-auto flex w-full max-w-[480px] flex-col gap-lg px-md py-xxl">
       <header className="flex items-center justify-between gap-md">
-        <h1 className="text-headline">IReview</h1>
+        <h1 className="text-card-title">IReview</h1>
         {/* Opening a folder is wired up in #28. */}
         <button
           type="button"
@@ -14,8 +16,8 @@ export function WelcomeWindow(): ReactElement {
           Open Folder
         </button>
       </header>
-      <section aria-labelledby="recent-repos" className="rounded-lg border border-hairline bg-surface-1">
-        <h2 id="recent-repos" className="border-b border-hairline px-sm py-xs text-eyebrow text-ink-muted">
+      <section aria-labelledby={recentReposHeadingId} className="rounded-lg border border-hairline bg-surface-1">
+        <h2 id={recentReposHeadingId} className="border-b border-hairline px-sm py-xs text-eyebrow text-ink-muted">
           Recent Repos
         </h2>
         <p className="px-sm py-lg text-center text-body-sm text-ink-subtle">No recent Repos</p>

@@ -1,7 +1,7 @@
 import { toORPCError } from '@orpc/client'
 import { useEffect, useState } from 'react'
 import type { WorkspaceClient } from '@shared/contract/workspace'
-import { WelcomeWindow } from '../welcome/WelcomeWindow'
+import { WelcomeWindow } from './WelcomeWindow'
 
 type HostConnection = { isConnected: boolean; errorCode?: string }
 
