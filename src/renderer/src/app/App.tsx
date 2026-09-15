@@ -1,9 +1,10 @@
 import type { ReactElement } from 'react'
+import { WelcomeWindow } from '../welcome/WelcomeWindow'
 
 export function App(): ReactElement {
   return (
     <main className="min-h-screen bg-canvas text-ink">
-      <h1>IReview</h1>
+      <WelcomeWindow />
     </main>
   )
 }
