@@ -58,10 +58,8 @@ colors:
   syntax-keyword: "#b99acb"
   syntax-string: "#94b889"
   syntax-number: "#d0a47c"
-  syntax-constant: "#d0a47c"
   syntax-function: "#8fabd8"
   syntax-type: "#7fb9b3"
-  syntax-variable: "#d0d6e0"
   syntax-property: "#b4bcc8"
   syntax-tag: "#cf8f8c"
   syntax-operator: "#a4a9b2"
@@ -146,36 +144,6 @@ typography:
     fontWeight: 400
     lineHeight: 1.50
     letterSpacing: 0
-  app-xs:
-    fontFamily: Inter
-    fontSize: 11px
-    fontWeight: 400
-    lineHeight: 1.45
-    letterSpacing: 0
-  app-sm:
-    fontFamily: Inter
-    fontSize: 12px
-    fontWeight: 400
-    lineHeight: 1.40
-    letterSpacing: 0
-  app-base:
-    fontFamily: Inter
-    fontSize: 13px
-    fontWeight: 400
-    lineHeight: 1.40
-    letterSpacing: 0
-  app-label:
-    fontFamily: Inter
-    fontSize: 13px
-    fontWeight: 500
-    lineHeight: 1.40
-    letterSpacing: 0
-  app-mono:
-    fontFamily: JetBrains Mono
-    fontSize: 13px
-    fontWeight: 400
-    lineHeight: 1.50
-    letterSpacing: 0
 
 rounded:
   xs: 4px
@@ -196,14 +164,6 @@ spacing:
   xl: 32px
   xxl: 48px
   section: 96px
-  app-gap-xxs: 2px
-  app-gap-xs: 4px
-  app-gap-sm: 6px
-  app-gap-md: 8px
-  app-gap-lg: 12px
-  app-row-sm: 22px
-  app-row: 28px
-  app-row-lg: 36px
 
 components:
   button-primary:
@@ -626,23 +586,34 @@ Linear's depth is carried by surface ladder + hairline borders. The brand resist
 
 ## App
 
-The IReview desktop app reuses this system for dense tool chrome. Everything above still applies; the app-only tokens below are prefixed (`diff-*`, `ansi-*`, `syntax-*`, `app-*`) plain scalars so the token generator can group them.
+The IReview desktop app reuses this system as-is: surfaces, ink, hairlines, `{colors.primary}`, `{colors.semantic-success}`, typography, spacing and radii. The front matter adds only the colors a code-review tool needs and the marketing site lacks: `diff-*`, `ansi-*`, `syntax-*`, `{colors.warning}` and `{colors.error}`.
 
-- **Dark only.** v1 ships the canvas and surface ladder above with no light theme. Don't add light variants of app tokens.
-- **One accent.** `{colors.primary}` stays the only chromatic UI color: focus, selection, primary action. App colors are muted, lower-chroma hues that sit below it and only carry meaning (diff state, terminal output, syntax, status), never decoration, fills or chrome.
-- **Fonts.** **Inter** substitutes Linear Display/Text for all UI; **JetBrains Mono** substitutes Linear Mono for editors, diffs and terminals. Fall back to `system-ui` and `ui-monospace`.
-- **Contrast.** Text-like tokens (`syntax-*`, `ansi-*` except `{colors.ansi-black}`, `{colors.warning}`, `{colors.error}`) hold at least 4.5:1 on `{colors.canvas}` through `{colors.surface-2}`, and on `diff-*-bg` tints over those surfaces; `diff-*-gutter` markers hold at least 3:1. `-word` tints mark short spans and may drop dim text such as `{colors.syntax-comment}` to about 3.6:1. `{colors.ansi-black}` is deliberately dark because TUIs paint it as a background; dim text uses `{colors.ansi-bright-black}`.
+- **Dark only.** v1 ships the canvas and surface ladder above with no light theme.
+- **One accent.** Lavender stays the only chromatic UI color: `{colors.primary}` for the primary action and the selected item, `{colors.primary-focus}` for focus rings. New solid colors have lower OKLCH chroma than `{colors.primary}` (the `diff-added-*` tints reuse `{colors.semantic-success}` at low alpha) and only carry meaning (diff state, terminal output, syntax, status), never decoration, fills or chrome.
+- **Fonts.** Inter substitutes Linear Display/Text; JetBrains Mono substitutes Linear Mono (see Note on Font Substitutes).
 
-### Token Groups
+### Dense UI With Existing Tokens
+
+| Need | Token |
+|---|---|
+| Default UI text: tree and list rows, menus, inputs (denser than marketing `text-input`) | `{typography.body-sm}` 14px |
+| Button labels | `{typography.button}` 14px / 500 |
+| Tab titles, pane and section headers | `{typography.eyebrow}` 13px / 500 |
+| Meta, badges, status bar, counts | `{typography.caption}` 12px |
+| Editor, diff, terminal, paths, SHAs | `{typography.mono}` 13px |
+| Row padding and inline gaps | `{spacing.xxs}` 4px, `{spacing.xs}` 8px |
+| Pane and toolbar padding | `{spacing.sm}` 12px; dialogs `{spacing.md}` 16px |
+| Radii | `{rounded.xs}` rows and badges, `{rounded.md}` buttons, inputs and menus, `{rounded.lg}` dialogs |
+
+Secondary, tertiary and disabled text use `{colors.ink-muted}`, `{colors.ink-subtle}` and `{colors.ink-tertiary}`; panes sit on `{colors.canvas}` to `{colors.surface-2}` separated by `{colors.hairline}`.
+
+### New Colors
 
 | Group | Keys | Use |
 |---|---|---|
-| `diff-*` | `added`, `removed`, `modified` × `-bg`, `-word`, `-gutter` | `-bg` (changed line) and `-word` (intra-line change) are `#rrggbbaa` tints composited over the editor background (`{colors.canvas}` to `{colors.surface-2}`); `-gutter` is the solid change marker. |
-| `ansi-*` | `black` … `white`, `bright-black` … `bright-white` | The 16 terminal colors. |
-| `syntax-*` | `comment`, `keyword`, `string`, `number`, `constant`, `function`, `type`, `variable`, `property`, `tag`, `operator`, `punctuation` | Editor highlighting. `number` and `constant` share a value on purpose. |
-| `warning`, `error` | — | Status text, problem markers, failed checks, destructive confirmations. Success reuses `{colors.semantic-success}`. |
+| `diff-*` | `added`, `removed`, `modified` × `-bg`, `-word`, `-gutter` | `-bg` (changed line) and `-word` (intra-line change) are `#rrggbbaa` tints composited over `{colors.canvas}` to `{colors.surface-2}`; `-gutter` is the solid change marker. Added and removed derive from `{colors.semantic-success}` and `{colors.error}`; change them together. |
+| `ansi-*` | `black` … `white`, `bright-black` … `bright-white` | All 16 terminal colors. `black`, `white`, `bright-black` and `bright-white` equal `{colors.hairline-strong}`, `{colors.ink-muted}`, `{colors.ink-subtle}` and `{colors.ink}`; change them together. |
+| `syntax-*` | `comment`, `keyword`, `string`, `number`, `function`, `type`, `property`, `tag`, `operator`, `punctuation` | Editor highlighting. Plain identifiers use `{colors.ink-muted}`; constants use `{colors.syntax-number}`. |
+| `warning`, `error` | — | Status text, problem markers, failed checks, destructive confirmations. Success uses `{colors.semantic-success}`. |
 
-### Density
-
-- UI text is 13px: `{typography.app-base}` by default, `{typography.app-label}` for tab titles, buttons and pane headers, `{typography.app-sm}` 12px for secondary meta and badges, `{typography.app-xs}` 11px for the status bar and counts only. Code and terminals use `{typography.app-mono}`.
-- Row heights `{spacing.app-row-sm}` 22px (tree and list rows), `{spacing.app-row}` 28px (tabs, inputs, menu items), `{spacing.app-row-lg}` 36px (toolbars). Gaps and padding use the separate `app-gap-*` scale, `{spacing.app-gap-xxs}` 2px through `{spacing.app-gap-lg}` 12px, which adds 2px half-steps to the 4px base unit; don't mix it with the marketing `spacing` keys. Corners stay within `{rounded.xs}`–`{rounded.md}`.
+**Contrast.** `syntax-*`, `ansi-*` (except `{colors.ansi-black}`), `{colors.warning}` and `{colors.error}` hold at least 4.5:1 on `{colors.canvas}` through `{colors.surface-2}`, including on `diff-*-bg` tints; gutters hold at least 3:1. `-word` tints stack on `-bg` over short spans and can drop `{colors.syntax-comment}` and `{colors.error}` to about 3:1 and other syntax colors to about 3.9:1. `{colors.ansi-black}` is deliberately dark because TUIs paint it as a background.
