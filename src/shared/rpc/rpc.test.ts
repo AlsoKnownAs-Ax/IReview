@@ -1,17 +1,21 @@
-import { expect, test, vi } from 'vitest'
+import { expect, expectTypeOf, test, vi } from 'vitest'
 import { z } from 'zod'
-import { createClient } from './client'
 import type { Channel, RpcMessage } from './channel'
-import { rpc, RpcError, type Contract, type Handlers } from './contract'
+import { createClient } from './client'
+import { rpc, type Client, type Contract, type Handlers, type RpcFailure } from './contract'
 import { createInMemoryChannelPair } from './in-memory-channel'
 import { serve } from './server'
 
 const contract = {
-  checkout: rpc({ input: z.object({ branch: z.string() }), result: z.object({ head: z.string() }) }),
+  checkout: rpc({
+    input: z.object({ branch: z.string() }),
+    result: z.object({ head: z.string() }),
+    error: z.object({ code: z.literal('BRANCH_CHECKED_OUT'), branch: z.string() }),
+  }),
 } satisfies Contract
 
 /** Serves `handlers` and returns a client, plus every message the server put on the wire. */
-function connect(handlers: Handlers<typeof contract>) {
+function connect(handlers: Handlers<typeof contract>): { client: Client<typeof contract>; sent: RpcMessage[] } {
   const [clientEnd, serverEnd] = createInMemoryChannelPair()
   const sent: RpcMessage[] = []
   const recordingEnd: Channel = {
@@ -26,72 +30,80 @@ function connect(handlers: Handlers<typeof contract>) {
 }
 
 test('a call resolves with the handler result', async () => {
-  const { client } = connect({ checkout: ({ branch }) => ({ head: `refs/heads/${branch}` }) })
+  const { client } = connect({ checkout: ({ branch }) => ({ data: { head: `refs/heads/${branch}` }, error: null }) })
 
-  await expect(client.checkout({ branch: 'main' })).resolves.toEqual({ head: 'refs/heads/main' })
+  expect(await client.checkout({ branch: 'main' })).toEqual({ data: { head: 'refs/heads/main' }, error: null })
 })
 
-test('input that fails the schema is rejected before the handler runs', async () => {
-  const checkout = vi.fn(() => ({ head: 'unused' }))
+test('input that fails the schema is an INVALID_INPUT error and the handler never runs', async () => {
+  const checkout = vi.fn(() => ({ data: { head: 'unused' }, error: null }))
   const { client } = connect({ checkout })
 
   // @ts-expect-error -- a peer is not bound by the contract's types
-  await expect(client.checkout({ branch: 42 })).rejects.toMatchObject({ code: 'INVALID_INPUT' })
+  const { error } = await client.checkout({ branch: 42 })
+  expect(error).toEqual({ code: 'INVALID_INPUT', issues: [{ path: ['branch'], message: expect.any(String) }] })
   expect(checkout).not.toHaveBeenCalled()
 })
 
-test('a method the host does not serve is rejected', async () => {
+test('a method the host does not serve is an UNKNOWN_METHOD error', async () => {
   const [clientEnd, serverEnd] = createInMemoryChannelPair()
-  serve(contract, { checkout: () => ({ head: 'unused' }) }, serverEnd)
+  serve(contract, { checkout: () => ({ data: { head: 'unused' }, error: null }) }, serverEnd)
   const newerContract = { ...contract, discard: rpc({ input: z.object({}), result: z.null() }) }
 
-  await expect(createClient(newerContract, clientEnd).discard({})).rejects.toMatchObject({ code: 'UNKNOWN_METHOD' })
+  const { error } = await createClient(newerContract, clientEnd).discard({})
+  expect(error).toEqual({ code: 'UNKNOWN_METHOD', method: 'discard' })
 })
 
 test('concurrent calls each resolve with their own response, even when answered out of order', async () => {
   const delays: Record<string, number> = { a: 30, b: 20, c: 10 }
   const { client } = connect({
-    checkout: ({ branch }) => new Promise((resolve) => setTimeout(() => resolve({ head: branch }), delays[branch])),
+    checkout: ({ branch }) =>
+      new Promise((resolve) => setTimeout(() => resolve({ data: { head: branch }, error: null }), delays[branch])),
   })
 
-  const heads = await Promise.all(['a', 'b', 'c'].map((branch) => client.checkout({ branch })))
-  expect(heads).toEqual([{ head: 'a' }, { head: 'b' }, { head: 'c' }])
+  const results = await Promise.all(['a', 'b', 'c'].map((branch) => client.checkout({ branch })))
+  expect(results.map(({ data }) => data)).toEqual([{ head: 'a' }, { head: 'b' }, { head: 'c' }])
 })
 
-test('a typed error reaches the client with its code', async () => {
-  const { client } = connect({
-    checkout: () => {
-      throw new RpcError('BRANCH_CHECKED_OUT', 'main is checked out in another worktree')
-    },
-  })
+test("a contract error reaches the client unchanged, minus fields its schema doesn't declare", async () => {
+  const error = { code: 'BRANCH_CHECKED_OUT', branch: 'main', stack: 'at C:\\secret\\repo' } as const
+  const { client } = connect({ checkout: () => ({ data: null, error }) })
 
-  const error = await client.checkout({ branch: 'main' }).catch((caught: unknown) => caught)
-  expect(error).toBeInstanceOf(RpcError)
-  expect(error).toMatchObject({ code: 'BRANCH_CHECKED_OUT', message: 'main is checked out in another worktree' })
+  const result = await client.checkout({ branch: 'main' })
+  expectTypeOf(result.error).toEqualTypeOf<{ code: 'BRANCH_CHECKED_OUT'; branch: string } | RpcFailure | null>()
+  expect(result).toEqual({ data: null, error: { code: 'BRANCH_CHECKED_OUT', branch: 'main' } })
 })
 
-test('an unexpected error becomes INTERNAL without leaking its message or stack', async () => {
+test('an unexpected throw becomes INTERNAL without leaking its message or stack', async () => {
   const { client, sent } = connect({
     checkout: () => {
       throw new Error('ENOENT: C:\\secret\\repo')
     },
   })
 
-  await expect(client.checkout({ branch: 'main' })).rejects.toMatchObject({ code: 'INTERNAL' })
-  expect(sent).toEqual([{ kind: 'error', id: expect.any(Number), code: 'INTERNAL', message: 'Internal error' }])
+  expect(await client.checkout({ branch: 'main' })).toEqual({ data: null, error: { code: 'INTERNAL' } })
+  expect(sent).toEqual([{ kind: 'response', id: expect.any(Number), data: null, error: { code: 'INTERNAL' } }])
 })
 
 test('a handler result that fails the result schema becomes INTERNAL', async () => {
   // @ts-expect-error -- handlers are not bound by the contract's types at runtime
-  const { client } = connect({ checkout: () => ({ head: 42 }) })
+  const { client } = connect({ checkout: () => ({ data: { head: 42 }, error: null }) })
 
-  await expect(client.checkout({ branch: 'main' })).rejects.toMatchObject({ code: 'INTERNAL' })
+  expect(await client.checkout({ branch: 'main' })).toEqual({ data: null, error: { code: 'INTERNAL' } })
 })
 
 test('a result the channel cannot carry becomes INTERNAL', async () => {
   const [clientEnd, serverEnd] = createInMemoryChannelPair()
   const loose = { inspect: rpc({ input: z.object({}), result: z.unknown() }) }
-  serve(loose, { inspect: () => () => 'functions cannot be cloned' }, serverEnd)
+  serve(loose, { inspect: () => ({ data: () => 'functions cannot be cloned', error: null }) }, serverEnd)
 
-  await expect(createClient(loose, clientEnd).inspect({})).rejects.toMatchObject({ code: 'INTERNAL' })
+  expect(await createClient(loose, clientEnd).inspect({})).toEqual({ data: null, error: { code: 'INTERNAL' } })
+})
+
+test('input the channel cannot carry is a SEND_FAILED error', async () => {
+  const { client } = connect({ checkout: ({ branch }) => ({ data: { head: branch }, error: null }) })
+  const input = { branch: 'main', onDone: () => {} }
+
+  expect(await client.checkout(input)).toEqual({ data: null, error: { code: 'SEND_FAILED' } })
+  expect(await client.checkout({ branch: 'next' })).toEqual({ data: { head: 'next' }, error: null })
 })

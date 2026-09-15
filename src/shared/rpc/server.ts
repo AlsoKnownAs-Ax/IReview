@@ -1,47 +1,64 @@
-import { z } from 'zod'
-import { requestMessage, type Channel, type RequestMessage, type ResponseMessage } from './channel'
-import { RpcError, type Contract, type Handlers } from './contract'
+import type { z } from 'zod'
+import { requestMessage, trySend, type Channel, type RequestMessage } from './channel'
+import type { CodedError, Contract, Handlers, Result, RpcFailure } from './contract'
+
+type Response = Result<unknown, CodedError>
+
+const INTERNAL: Result<never, { code: 'INTERNAL' }> = { data: null, error: { code: 'INTERNAL' } }
 
 /**
- * Answers requests on `channel`, validating every input before its handler runs and every result before it is sent
- * (SPEC §5.2). Returns a function that stops serving.
+ * Answers requests on `channel` (SPEC §5.2). Anything that goes wrong reaches the client as a coded error value; an
+ * unexpected throw or an off-contract result becomes a bare `INTERNAL`, so no message or stack leaks. Returns a
+ * function that stops serving.
  */
 export function serve<C extends Contract>(contract: C, handlers: Handlers<C>, channel: Channel): () => void {
-  return channel.onMessage(async (raw) => {
-    const request = requestMessage.safeParse(raw)
-    if (!request.success) return
-    const response = await respond(contract, handlers as Handlers<Contract>, request.data)
-    try {
-      channel.send(response)
-    } catch {
-      // The transport could not carry the result, such as a value that cannot be structured-cloned.
-      channel.send(internalError(request.data.id))
-    }
+  return channel.onMessage(async (message) => {
+    const { success, data: request } = requestMessage.safeParse(message)
+    if (!success) return
+    const response = await respond(contract, handlers as Handlers<Contract>, request)
+    const { error } = trySend(channel, { kind: 'response', id: request.id, ...response })
+    if (error) trySend(channel, { kind: 'response', id: request.id, ...INTERNAL })
   })
 }
 
-async function respond(
-  contract: Contract,
-  handlers: Handlers<Contract>,
-  request: RequestMessage,
-): Promise<ResponseMessage> {
-  const { id, method, input } = request
+async function respond(contract: Contract, handlers: Handlers<Contract>, request: RequestMessage): Promise<Response> {
+  const { method, input } = request
+  // `hasOwn`, so a peer cannot reach prototype members such as `toString`.
+  if (!Object.hasOwn(contract, method)) return failure({ code: 'UNKNOWN_METHOD', method })
+  const member = contract[method]!
+
+  const { success, data: parsedInput, error: inputError } = member.input.safeParse(input)
+  if (!success) return failure({ code: 'INVALID_INPUT', issues: toIssues(inputError) })
+
+  const { data: outcome, error: thrown } = await runHandler(handlers[method]!, parsedInput)
+  if (thrown) return INTERNAL
+
+  if (outcome.error) {
+    const { success: isContractError, data: error } = member.error.safeParse(outcome.error)
+    if (!isContractError) return INTERNAL
+    return { data: null, error }
+  }
+  const { success: isContractResult, data } = member.result.safeParse(outcome.data)
+  if (!isContractResult) return INTERNAL
+  return { data, error: null }
+}
+
+/** Runs a handler, mapping a throw to `INTERNAL`. Its own result is still unchecked. */
+async function runHandler(
+  handler: Handlers<Contract>[string],
+  input: unknown,
+): Promise<Result<Result<unknown, unknown>, { code: 'INTERNAL' }>> {
   try {
-    // `hasOwn`, so a peer cannot reach prototype members such as `toString`.
-    const handler = Object.hasOwn(contract, method) ? handlers[method] : undefined
-    if (!handler) throw new RpcError('UNKNOWN_METHOD')
-    const { input: inputSchema, result: resultSchema } = contract[method]!
-    const parsed = inputSchema.safeParse(input)
-    if (!parsed.success) throw new RpcError('INVALID_INPUT', z.prettifyError(parsed.error))
-    return { kind: 'result', id, value: resultSchema.parse(await handler(parsed.data)) }
-  } catch (error) {
-    // Only an RpcError's code and message cross the channel; anything else could carry paths or stack traces.
-    return error instanceof RpcError
-      ? { kind: 'error', id, code: error.code, message: error.message }
-      : internalError(id)
+    return { data: await handler(input), error: null }
+  } catch {
+    return INTERNAL
   }
 }
 
-function internalError(id: number): ResponseMessage {
-  return { kind: 'error', id, code: 'INTERNAL', message: 'Internal error' }
+function failure(error: RpcFailure): Response {
+  return { data: null, error }
+}
+
+function toIssues(error: z.ZodError): { path: string[]; message: string }[] {
+  return error.issues.map(({ path, message }) => ({ path: path.map(String), message }))
 }
