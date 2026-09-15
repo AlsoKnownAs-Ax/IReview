@@ -1,8 +1,10 @@
 import { session } from 'electron'
 
-type Directives = Record<string, string[]>
+type Directives = Record<string, readonly string[]>
 
-const PRODUCTION: Directives = {
+const CSP_HEADER = 'Content-Security-Policy'
+
+const BASE_DIRECTIVES = {
   'default-src': ["'self'"],
   'script-src': ["'self'", "'wasm-unsafe-eval'"],
   'connect-src': ["'self'"],
@@ -10,10 +12,16 @@ const PRODUCTION: Directives = {
   'base-uri': ["'none'"],
   'form-action': ["'none'"],
   'frame-ancestors': ["'none'"],
-}
+} satisfies Directives
 
-/** The policy every `app://` response carries (SPEC §5.1). */
-export const CONTENT_SECURITY_POLICY = serialize(PRODUCTION)
+const CONTENT_SECURITY_POLICY = serialize(BASE_DIRECTIVES)
+
+/** Returns `response` carrying the app's CSP (SPEC §5.1). */
+export function withContentSecurityPolicy(response: Response): Response {
+  const headers = new Headers(response.headers)
+  headers.set(CSP_HEADER, CONTENT_SECURITY_POLICY)
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers })
+}
 
 /**
  * Applies the policy to the Vite dev server, relaxed only as far as HMR needs: its inline React Refresh preamble,
@@ -22,14 +30,14 @@ export const CONTENT_SECURITY_POLICY = serialize(PRODUCTION)
 export function enforceCspOnDevServer(devServerUrl: string): void {
   const { origin, host } = new URL(devServerUrl)
   const policy = serialize({
-    ...PRODUCTION,
-    'script-src': [...(PRODUCTION['script-src'] ?? []), "'unsafe-inline'"],
+    ...BASE_DIRECTIVES,
+    'script-src': [...BASE_DIRECTIVES['script-src'], "'unsafe-inline'"],
     'style-src': ["'self'", "'unsafe-inline'"],
-    'connect-src': ["'self'", `ws://${host}`],
+    'connect-src': [...BASE_DIRECTIVES['connect-src'], `ws://${host}`],
   })
 
   session.defaultSession.webRequest.onHeadersReceived({ urls: [`${origin}/*`] }, (details, callback) => {
-    callback({ responseHeaders: { ...details.responseHeaders, 'Content-Security-Policy': [policy] } })
+    callback({ responseHeaders: { ...details.responseHeaders, [CSP_HEADER]: [policy] } })
   })
 }
 

@@ -2,7 +2,7 @@ import { pathToFileURL } from 'node:url'
 import { net, protocol } from 'electron'
 import { APP_SCHEME } from '../config'
 import { resolveAppUrl } from './app-url'
-import { CONTENT_SECURITY_POLICY } from './csp'
+import { withContentSecurityPolicy } from './csp'
 
 /** Must run before the app is ready. */
 export function registerAppScheme(): void {
@@ -13,20 +13,17 @@ export function registerAppScheme(): void {
 
 /** Serves the renderer bundle in `root` over `app://` under the app's CSP. Anything else is a 404. */
 export function serveRendererOverAppProtocol(root: string): void {
-  protocol.handle(APP_SCHEME, async (request) => {
-    const file = resolveAppUrl(request.url, root)
-    if (!file) return notFound()
+  protocol.handle(APP_SCHEME, async (request) => withContentSecurityPolicy(await serve(request.url, root)))
+}
 
-    let response: Response
-    try {
-      response = await net.fetch(pathToFileURL(file).toString())
-    } catch {
-      return notFound()
-    }
-    const headers = new Headers(response.headers)
-    headers.set('Content-Security-Policy', CONTENT_SECURITY_POLICY)
-    return new Response(response.body, { status: response.status, statusText: response.statusText, headers })
-  })
+async function serve(url: string, root: string): Promise<Response> {
+  const file = resolveAppUrl(url, root)
+  if (!file) return notFound()
+  try {
+    return await net.fetch(pathToFileURL(file).toString())
+  } catch {
+    return notFound()
+  }
 }
 
 function notFound(): Response {

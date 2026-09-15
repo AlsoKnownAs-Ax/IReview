@@ -12,7 +12,7 @@ test.afterEach(async () => {
   await launched.close()
 })
 
-test('the renderer loads with a strict CSP and no violations', async () => {
+test('every app:// response carries a strict CSP and the renderer loads without violations', async () => {
   const { window } = launched
   // Record violations from before the first page script runs, then load the page again.
   await window.addInitScript(`
@@ -22,32 +22,40 @@ test('the renderer loads with a strict CSP and no violations', async () => {
   await window.reload()
   await expect(window.locator('h1')).toHaveText('IReview')
 
-  const policy = await window.evaluate(async () => (await fetch('/index.html')).headers.get('content-security-policy'))
-  expect(policy).toContain("script-src 'self' 'wasm-unsafe-eval'")
-  expect(policy).toContain("connect-src 'self'")
+  const policies = await window.evaluate(async () => {
+    const policy = async (path: string) => (await fetch(path)).headers.get('content-security-policy')
+    return [await policy('/index.html'), await policy('/missing.js')]
+  })
+  for (const policy of policies) {
+    expect(policy).toContain("script-src 'self' 'wasm-unsafe-eval'")
+    expect(policy).toContain("connect-src 'self'")
+  }
   expect(await window.evaluate('window.cspViolations')).toEqual([])
 })
 
 test('inline scripts and remote connections are blocked', async () => {
-  const result = await launched.window.evaluate(`(async () => {
-    const violations = []
-    document.addEventListener('securitypolicyviolation', (event) => violations.push(event.effectiveDirective))
-
+  const { window } = launched
+  // Tests compile without DOM types, so in-page code is passed as a string.
+  await window.evaluate(`
+    window.cspViolations = []
+    document.addEventListener('securitypolicyviolation', (event) => window.cspViolations.push(event.effectiveDirective))
     const script = document.createElement('script')
     script.textContent = 'window.inlineRan = true'
     document.body.append(script)
+  `)
 
-    const fetched = await fetch('https://example.com/', { mode: 'no-cors' }).then(() => 'resolved', () => 'rejected')
-    await new Promise((resolve) => setTimeout(resolve, 100))
+  const fetched = await window.evaluate(() =>
+    fetch('https://example.com/', { mode: 'no-cors' }).then(
+      () => 'resolved',
+      () => 'rejected',
+    ),
+  )
 
-    return { inlineRan: window.inlineRan === true, fetched, violations }
-  })()`)
-
-  expect(result).toEqual({
-    inlineRan: false,
-    fetched: 'rejected',
-    violations: ['script-src-elem', 'connect-src'],
-  })
+  expect(fetched).toBe('rejected')
+  await expect
+    .poll(async () => ((await window.evaluate('window.cspViolations')) as string[]).toSorted())
+    .toEqual(['connect-src', 'script-src-elem'])
+  expect(await window.evaluate('window.inlineRan')).toBeUndefined()
 })
 
 test('the renderer has no Node globals', async () => {

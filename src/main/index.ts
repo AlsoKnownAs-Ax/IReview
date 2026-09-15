@@ -5,7 +5,7 @@ import { serveRendererOverAppProtocol, registerAppScheme } from './security/app-
 import { enforceCspOnDevServer } from './security/csp'
 import { lockDownWebContents } from './security/lockdown'
 
-const devServerUrl = app.isPackaged ? undefined : process.env['ELECTRON_RENDERER_URL']
+const devServerUrl = (!app.isPackaged && process.env['ELECTRON_RENDERER_URL']) || undefined
 
 registerAppScheme()
 lockDownWebContents()
