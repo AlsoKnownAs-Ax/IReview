@@ -1,4 +1,5 @@
-import { parse } from 'yaml'
+import { parseDocument } from 'yaml'
+import { z } from 'zod'
 
 /** What `pnpm gen:tokens` reads and the generated, committed theme it writes, relative to the repo root. */
 export const TOKEN_PATHS = {
@@ -9,39 +10,60 @@ export const TOKEN_PATHS = {
 
 const HEADER = '/* Generated from DESIGN.md by scripts/gen-tokens.ts. Do not edit; run `pnpm gen:tokens`. */'
 
-interface TextStyle {
-  fontFamily: string
-  fontSize: string
-  fontWeight: number
-  lineHeight: number
-  letterSpacing: string | number
-}
+const ScaleSchema = z.record(z.string(), z.string())
 
-/** The DESIGN.md front-matter groups that become tokens. `components` only references these, so it is left out. */
-interface Tokens {
-  colors: Record<string, string>
-  typography: Record<string, TextStyle>
-  rounded: Record<string, string>
-  spacing: Record<string, string>
-}
+/**
+ * The DESIGN.md front-matter groups that become tokens, in output order. Unknown keys are dropped: `components` only
+ * references these groups.
+ */
+const TokensSchema = z.object({
+  colors: ScaleSchema,
+  typography: z.record(
+    z.string(),
+    z.object({
+      fontFamily: z.string(),
+      fontSize: z.string(),
+      fontWeight: z.number(),
+      lineHeight: z.number(),
+      letterSpacing: z.union([z.string(), z.number()]),
+    }),
+  ),
+  rounded: ScaleSchema,
+  spacing: ScaleSchema,
+})
 
-const GROUPS = ['colors', 'typography', 'rounded', 'spacing'] as const
+type Tokens = z.infer<typeof TokensSchema>
+
+type Result<T, E> = { data: T; error: null } | { data: null; error: E }
+
+export type GeneratedTokens = { css: string; ts: string }
+
+export type TokensError =
+  | { code: 'MISSING_FRONT_MATTER' }
+  | { code: 'INVALID_YAML'; message: string }
+  | { code: 'INVALID_TOKENS'; issues: z.core.$ZodIssue[] }
 
 /** Turns the DESIGN.md front matter into a Tailwind v4 `@theme` stylesheet and a TS module of the same tokens. */
-export function generateTokens(designMd: string): { css: string; ts: string } {
+export function generateTokens(designMd: string): Result<GeneratedTokens, TokensError> {
   const frontMatter = /^---\r?\n([\s\S]*?)\r?\n---/.exec(designMd)?.[1]
-  if (frontMatter === undefined) throw new Error('DESIGN.md has no front matter')
-  const groups: Partial<Tokens> = parse(frontMatter)
-  const missing = GROUPS.find((group) => !groups[group])
-  if (missing) throw new Error(`DESIGN.md front matter has no ${missing}`)
-  const { colors, typography, rounded, spacing } = groups as Tokens
-  const tokens: Tokens = { colors, typography, rounded, spacing }
+  if (frontMatter === undefined) return { data: null, error: { code: 'MISSING_FRONT_MATTER' } }
 
+  const document = parseDocument(frontMatter)
+  const [yamlError] = document.errors
+  if (yamlError) return { data: null, error: { code: 'INVALID_YAML', message: yamlError.message } }
+
+  const { success, data: tokens, error } = TokensSchema.safeParse(document.toJS())
+  if (!success) return { data: null, error: { code: 'INVALID_TOKENS', issues: error.issues } }
+
+  const theme = themeVariables(tokens)
+    .map((variable) => `  ${variable};\n`)
+    .join('')
   return {
-    css: `${HEADER}\n@theme {\n${themeVariables(tokens)
-      .map((variable) => `  ${variable};\n`)
-      .join('')}}\n`,
-    ts: `${HEADER}\nexport const tokens = ${JSON.stringify(tokens, null, 2)} as const\n`,
+    data: {
+      css: `${HEADER}\n@theme {\n${theme}}\n`,
+      ts: `${HEADER}\nexport const tokens = ${JSON.stringify(tokens, null, 2)} as const\n`,
+    },
+    error: null,
   }
 }
 
@@ -53,12 +75,9 @@ export function generateTokens(designMd: string): { css: string; ts: string } {
  * Font families stay in the TS module only: DESIGN.md substitutes Inter and JetBrains Mono, which are not bundled yet.
  */
 function themeVariables({ colors, typography, rounded, spacing }: Tokens): string[] {
-  const scale = (namespace: string, values: Record<string, string>) =>
-    Object.entries(values).map(([name, value]) => `--${namespace}-${name}: ${value}`)
-
   return [
     '--color-*: initial',
-    ...scale('color', colors),
+    ...scaleVariables('color', colors),
     '--text-*: initial',
     ...Object.entries(typography).flatMap(([name, style]) => [
       `--text-${name}: ${style.fontSize}`,
@@ -67,7 +86,11 @@ function themeVariables({ colors, typography, rounded, spacing }: Tokens): strin
       `--text-${name}--letter-spacing: ${style.letterSpacing}`,
     ]),
     '--radius-*: initial',
-    ...scale('radius', rounded),
-    ...scale('spacing', spacing),
+    ...scaleVariables('radius', rounded),
+    ...scaleVariables('spacing', spacing),
   ]
+}
+
+function scaleVariables(namespace: string, scale: Record<string, string>): string[] {
+  return Object.entries(scale).map(([name, value]) => `--${namespace}-${name}: ${value}`)
 }

@@ -29,7 +29,7 @@ const HEADER = '/* Generated from DESIGN.md by scripts/gen-tokens.ts. Do not edi
 
 describe('generateTokens', () => {
   test('maps each token group to its Tailwind theme namespace', () => {
-    expect(generateTokens(DESIGN).css).toBe(`${HEADER}
+    expect(generateTokens(DESIGN).data?.css).toBe(`${HEADER}
 @theme {
   --color-*: initial;
   --color-canvas: #010102;
@@ -47,7 +47,7 @@ describe('generateTokens', () => {
   })
 
   test('exports the same tokens from a typed TS module', () => {
-    expect(generateTokens(DESIGN).ts).toBe(`${HEADER}
+    expect(generateTokens(DESIGN).data?.ts).toBe(`${HEADER}
 export const tokens = {
   "colors": {
     "canvas": "#010102",
@@ -72,17 +72,20 @@ export const tokens = {
 `)
   })
 
-  test('rejects a document without front matter or a token group', () => {
-    expect(() => generateTokens('# No tokens')).toThrow('DESIGN.md has no front matter')
-    expect(() => generateTokens(DESIGN.replace('rounded:', 'corners:'))).toThrow(
-      'DESIGN.md front matter has no rounded',
-    )
+  test('reports a document without front matter, with malformed YAML or with a missing token group', () => {
+    expect(generateTokens('# No tokens')).toEqual({ data: null, error: { code: 'MISSING_FRONT_MATTER' } })
+    expect(generateTokens('---\ncolors: [\n---').error).toMatchObject({ code: 'INVALID_YAML' })
+    expect(generateTokens(DESIGN.replace('rounded:', 'corners:')).error).toMatchObject({
+      code: 'INVALID_TOKENS',
+      issues: [{ path: ['rounded'] }],
+    })
   })
 
   test('the committed theme files match a fresh generation from DESIGN.md', () => {
-    const fresh = generateTokens(readFileSync(TOKEN_PATHS.design, 'utf8'))
-    const regenerateHint = 'is stale: run `pnpm gen:tokens`'
-    expect(readFileSync(TOKEN_PATHS.css, 'utf8'), `${TOKEN_PATHS.css} ${regenerateHint}`).toBe(fresh.css)
-    expect(readFileSync(TOKEN_PATHS.ts, 'utf8'), `${TOKEN_PATHS.ts} ${regenerateHint}`).toBe(fresh.ts)
+    const committed = { css: readFileSync(TOKEN_PATHS.css, 'utf8'), ts: readFileSync(TOKEN_PATHS.ts, 'utf8') }
+    expect(generateTokens(readFileSync(TOKEN_PATHS.design, 'utf8')), 'stale tokens: run `pnpm gen:tokens`').toEqual({
+      data: committed,
+      error: null,
+    })
   })
 })
