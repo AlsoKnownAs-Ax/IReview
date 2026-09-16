@@ -14,6 +14,7 @@ export default defineConfig(
       'src/main/**',
       'src/preload/**',
       'src/shared/**',
+      'scripts/**',
       'tests/**',
       '*.config.{ts,mjs,cjs}',
       '.dependency-cruiser.cjs',
