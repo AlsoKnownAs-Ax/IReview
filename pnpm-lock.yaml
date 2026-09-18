@@ -178,6 +178,9 @@ importers:
       '@orpc/shared':
         specifier: ^1.15.1
         version: 1.15.1
+      '@orpc/standard-server-peer':
+        specifier: ^1.15.1
+        version: 1.15.1
       react:
         specifier: ^19.3.0
         version: 19.3.0
