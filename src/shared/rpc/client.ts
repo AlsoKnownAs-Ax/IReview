@@ -1,12 +1,14 @@
 import { responseMessage, type Channel, type ResponseMessage } from './channel'
 import type { Client, Contract, RpcResult } from './contract'
 
+type ResolveCall = (result: RpcResult) => void
+
 /**
  * A typed caller for `contract` over `channel`. Calls resolve to a `Result` and never reject. Request ids are only
  * unique per client, so each channel carries at most one client.
  */
 export function createClient<C extends Contract>(contract: C, channel: Channel): Client<C> {
-  const pending = new Map<number, (result: RpcResult) => void>()
+  const pending = new Map<number, ResolveCall>()
   let nextId = 0
 
   channel.onMessage((message): void => {
