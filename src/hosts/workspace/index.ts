@@ -10,5 +10,5 @@ const router = os.router({
 // Main hands over one port per renderer page load (SPEC §5.1–5.2); oRPC stops serving a port once it closes.
 process.parentPort.on('message', ({ ports: [port] }): void => {
   if (!port) return
-  serve(router, port)
+  serve<typeof workspaceContract>(router, port)
 })
