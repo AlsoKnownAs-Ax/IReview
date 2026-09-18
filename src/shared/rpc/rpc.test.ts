@@ -1,7 +1,7 @@
 import { isDefinedError } from '@orpc/client'
 import { eventIterator, oc } from '@orpc/contract'
-import { EventPublisher, implement } from '@orpc/server'
-import { assert, expect, expectTypeOf, onTestFinished, test, vi } from 'vitest'
+import { EventPublisher, implement, type Router } from '@orpc/server'
+import { assert, beforeEach, expect, expectTypeOf, onTestFinished, test, vi } from 'vitest'
 import { z } from 'zod'
 import { connect, declaredError, serve, type Client } from './rpc'
 
@@ -15,20 +15,32 @@ const contract = {
     .output(eventIterator(z.string()))
     .errors({ LOG_UNAVAILABLE: {} }),
   changed: oc.output(eventIterator(z.object({ path: z.string() }))),
+  repo: { head: oc.output(z.string()) },
   discard: oc
     .input(z.object({ path: z.string() }))
     .errors({ DIRTY_WORKTREE: { data: z.object({ code: z.literal('DIRTY_WORKTREE'), path: z.string() }) } }),
 }
 const os = implement(contract)
+const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
 
+type TestPort = InstanceType<typeof MessageChannel>['port1']
+type HostRouter = Router<typeof contract, Record<never, never>>
+type Channel = { client: Client<typeof contract>; clientPort: TestPort; hostPort: TestPort }
 type EndlessLogHost = { cancelled: boolean; yielded: number }
 
-/** Serves `router` on one end of a fresh MessageChannel and returns a client on the other. */
-function connectTo(router: Parameters<typeof serve>[0]): Client<typeof contract> {
-  const { port1, port2 } = new MessageChannel()
-  onTestFinished(() => port1.close())
-  serve(router, port2)
-  return connect<typeof contract>(port1)
+beforeEach(() => logged.mockClear())
+
+/** Serves `router` on one end of a fresh MessageChannel and connects a client to the other. */
+function openChannel(router: Partial<HostRouter>): Channel {
+  const { port1: clientPort, port2: hostPort } = new MessageChannel()
+  onTestFinished(() => clientPort.close())
+  // Each test implements only what it calls; anything else answers NOT_FOUND.
+  serve<typeof contract>(router as HostRouter, hostPort)
+  return { client: connect<typeof contract>(clientPort), clientPort, hostPort }
+}
+
+function connectTo(router: Partial<HostRouter>): Client<typeof contract> {
+  return openChannel(router).client
 }
 
 /** Serves a `log` that yields until the host cancels it. */
@@ -68,13 +80,41 @@ test('a call resolves with the handler result', async () => {
   expect({ error, data }).toEqual({ error: null, data: { head: 'refs/heads/main' } })
 })
 
-test('a client can be handed over through a Promise', async () => {
-  const client = await Promise.resolve(
-    connectTo({ checkout: os.checkout.handler(() => ({ head: 'refs/heads/main' })) }),
-  )
+test('a client, and each nested client, can be handed over through a Promise', async () => {
+  const client = connectTo({
+    checkout: os.checkout.handler(() => ({ head: 'refs/heads/main' })),
+    repo: { head: os.repo.head.handler(() => 'main') },
+  })
 
-  const { error, data } = await client.checkout({ branch: 'main' })
-  expect({ error, data }).toEqual({ error: null, data: { head: 'refs/heads/main' } })
+  const [root, repo] = await Promise.all([Promise.resolve(client), Promise.resolve(client.repo)])
+  const [checkout, head] = await Promise.all([root.checkout({ branch: 'main' }), repo.head()])
+  expect([checkout.data, head.data]).toEqual([{ head: 'refs/heads/main' }, 'main'])
+})
+
+test('serve takes only a router for the whole contract it names', () => {
+  const partial = { checkout: os.checkout.handler(() => ({ head: 'refs/heads/main' })) }
+
+  expectTypeOf(partial).not.toExtend<Parameters<typeof serve<typeof contract>>[0]>()
+})
+
+test('a message that is not an oRPC request is dropped and logged, and the host keeps answering', async () => {
+  const { client, clientPort } = openChannel({ checkout: os.checkout.handler(({ input }) => ({ head: input.branch })) })
+  const multipart = { i: 1, p: { u: '/checkout', h: { 'content-type': 'multipart/form-data' } } }
+  ;['not json', { i: 0 }, JSON.stringify(multipart)].forEach((message) => clientPort.postMessage(message))
+
+  const { data } = await client.checkout({ branch: 'main' })
+  expect(data).toEqual({ head: 'main' })
+  expect(logged.mock.calls.filter(([line]) => String(line).includes('dropped'))).toHaveLength(3)
+})
+
+test('once the port closes, a call in flight and every later call settle with an error instead of hanging', async () => {
+  const { client, hostPort } = openChannel({ checkout: os.checkout.handler(() => new Promise<never>(() => {})) })
+  const inFlight = client.checkout({ branch: 'main' })
+  await sleep(10)
+
+  hostPort.close()
+  expect((await inFlight).error).toBeInstanceOf(Error)
+  expect((await client.checkout({ branch: 'next' })).error).toMatchObject({ code: 'SERVICE_UNAVAILABLE' })
 })
 
 test('input that fails the schema is a BAD_REQUEST with its issues, and the handler never runs', async () => {
@@ -102,6 +142,7 @@ test("a declared error reaches the client typed, minus fields its schema doesn't
   assert(isDefinedError(error))
   expectTypeOf(error.data).toEqualTypeOf<{ branch: string }>()
   expect([error.code, error.data]).toEqual(['BRANCH_CHECKED_OUT', { branch: 'main' }])
+  expect(logged).not.toHaveBeenCalled()
 })
 
 test('declaredError turns a Result error into its declared code, carrying the error as data', async () => {
@@ -133,6 +174,24 @@ test.each([
   const { error } = await client.checkout({ branch: 'main' })
   expect(error).toMatchObject({ code: 'INTERNAL_SERVER_ERROR', data: undefined })
   expect(JSON.stringify(error)).not.toContain('secret')
+})
+
+test.each([
+  [
+    'a throw',
+    (): never => {
+      throw new Error('ENOENT: C:\\secret\\repo')
+    },
+  ],
+  ['a result the output schema rejects', (): { head: number } => ({ head: 42 })],
+])('%s becomes INTERNAL_SERVER_ERROR without leaking anything', async (_, checkout) => {
+  // @ts-expect-error -- handlers are not bound by the contract's types at runtime
+  const client = connectTo({ checkout: os.checkout.handler(checkout) })
+
+  const { error } = await client.checkout({ branch: 'main' })
+  expect(error).toMatchObject({ code: 'INTERNAL_SERVER_ERROR', data: undefined })
+  expect(JSON.stringify(error)).not.toContain('secret')
+  expect(logged).toHaveBeenCalledWith('rpc: a call failed', expect.any(Error))
 })
 
 test('concurrent calls each resolve with their own response, even when answered out of order', async () => {

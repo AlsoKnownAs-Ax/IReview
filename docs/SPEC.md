@@ -277,9 +277,11 @@ main (one): lifecycle, repo→window registry, MessagePort broker, safeStorage, 
   Errors are typed codes declared per procedure (e.g. `BRANCH_CHECKED_OUT`, `DIRTY_WORKTREE`, `RATE_LIMITED`).
 - `src/shared/rpc/`: `serve` and `connect` over oRPC's MessagePort adapter, which covers the DOM `MessagePort` and
   Electron `MessagePortMain`. Tests use Node's `MessageChannel`.
-  - Servers validate all inputs.
-  - Clients are safe clients: calls resolve to `{ error, data }`.
-  - Clients reconnect and resubscribe after host restarts.
+  - Servers validate all inputs and drop messages oRPC can't decode.
+  - Clients are safe clients: calls resolve to `{ error, data }`. After their port closes, calls settle with an error
+    instead of hanging.
+  - Reconnecting and resubscribing after host restarts is built on top of `connect`, not by `src/shared/rpc/` itself
+    ([ADR-0009](./adr/0009-orpc-for-host-ipc.md)).
 - Ports are created in main and handed to host and renderer; preload exposes only port retrieval and platform info.
 - **Terminal data path:** PTY output feeds the headless mirror and a per-Terminal buffer flushed every 8 ms or 64 KB;
   the renderer acknowledges written characters; the host pauses the PTY above 100k unacknowledged characters and
