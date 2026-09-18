@@ -1,3 +1,4 @@
+import { isDefinedError, toORPCError } from '@orpc/client'
 import { useEffect, useState, type ReactElement } from 'react'
 import {
   MINIMUM_GIT_VERSION,
@@ -5,15 +6,13 @@ import {
   type GitVersionError,
   type WorkspaceClient,
 } from '../../../shared/contract/workspace'
-import type { CodedError, RpcFailure } from '../../../shared/rpc/contract'
 
-type HostConnection = { isConnected: boolean; error?: CodedError }
+type HostConnection = { isConnected: boolean; errorCode?: string }
 
-type GitCheckError = GitVersionError | RpcFailure
+/** `error` is a failure the git check declares; `errorCode` is any other failure of the call. */
+type GitCheck = { version?: GitVersion; error?: GitVersionError; errorCode?: string }
 
-type GitCheck = { version?: GitVersion; error?: GitCheckError }
-
-type GitErrorByCode = { [E in GitCheckError as E['code']]: E }
+type GitErrorByCode = { [E in GitVersionError as E['code']]: E }
 
 type GitErrorCode = keyof GitErrorByCode
 
@@ -22,14 +21,10 @@ const GIT_ERROR_TEXT: { [C in GitErrorCode]: (error: GitErrorByCode[C]) => strin
   GIT_FAILED: ({ stderr }) => needsGit(`git could not report its version: ${stderr.trim()}`),
   GIT_VERSION_UNRECOGNIZED: () => needsGit('git reported a version IReview does not recognize'),
   GIT_TOO_OLD: ({ version }) => needsGit(`git ${formatGitVersion(version)} is too old`),
-  INVALID_INPUT: gitUncheckedText,
-  UNKNOWN_METHOD: gitUncheckedText,
-  SEND_FAILED: gitUncheckedText,
-  INTERNAL: gitUncheckedText,
 }
 
-function hostStatusText({ isConnected, error }: HostConnection): string {
-  if (error) return `Workspace host unavailable (${error.code})`
+function hostStatusText({ isConnected, errorCode }: HostConnection): string {
+  if (errorCode) return `Workspace host unavailable (${errorCode})`
   if (isConnected) return 'Workspace host connected'
   return 'Connecting to workspace host…'
 }
@@ -42,16 +37,13 @@ function needsGit(problem: string): string {
   return `${problem}. IReview needs git ${MINIMUM_GIT_VERSION.major}.${MINIMUM_GIT_VERSION.minor} or newer.`
 }
 
-function gitUncheckedText({ code }: RpcFailure): string {
-  return `Could not check git (${code})`
-}
-
 function gitErrorText<C extends GitErrorCode>(error: GitErrorByCode[C] & { code: C }): string {
   const toText: (error: GitErrorByCode[C]) => string = GIT_ERROR_TEXT[error.code]
   return toText(error)
 }
 
-function gitStatusText({ version, error }: GitCheck): string {
+function gitStatusText({ version, error, errorCode }: GitCheck): string {
+  if (errorCode) return `Could not check git (${errorCode})`
   if (error) return gitErrorText(error)
   if (version) return `git ${formatGitVersion(version)}`
   return 'Checking git…'
@@ -66,12 +58,13 @@ export function App({ workspaceHost }: { workspaceHost: Promise<WorkspaceClient>
     void workspaceHost.then((host): void => {
       void host.ping().then(({ error }): void => {
         if (!isMounted) return
-        if (error) return setConnection({ isConnected: false, error })
+        if (error) return setConnection({ isConnected: false, errorCode: toORPCError(error).code })
         setConnection({ isConnected: true })
       })
       void host.gitVersion().then(({ data: version, error }): void => {
         if (!isMounted) return
-        if (error) return setGit({ error })
+        if (isDefinedError(error)) return setGit({ error: error.data })
+        if (error) return setGit({ errorCode: toORPCError(error).code })
         setGit({ version })
       })
     })
