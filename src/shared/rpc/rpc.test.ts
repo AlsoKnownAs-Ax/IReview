@@ -65,6 +65,15 @@ test('a call resolves with the handler result', async () => {
   expect({ error, data }).toEqual({ error: null, data: { head: 'refs/heads/main' } })
 })
 
+test('a client can be handed over through a Promise', async () => {
+  const client = await Promise.resolve(
+    connectTo({ checkout: os.checkout.handler(() => ({ head: 'refs/heads/main' })) }),
+  )
+
+  const { error, data } = await client.checkout({ branch: 'main' })
+  expect({ error, data }).toEqual({ error: null, data: { head: 'refs/heads/main' } })
+})
+
 test('input that fails the schema is a BAD_REQUEST with its issues, and the handler never runs', async () => {
   const checkout = vi.fn(() => ({ head: 'unused' }))
   const client = connectTo({ checkout: os.checkout.handler(checkout) })

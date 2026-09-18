@@ -3,6 +3,7 @@ import { RPCLink, type SupportedMessagePort } from '@orpc/client/message-port'
 import type { AnyContractRouter, ContractRouterClient } from '@orpc/contract'
 import type { Router } from '@orpc/server'
 import { RPCHandler } from '@orpc/server/message-port'
+import { preventNativeAwait } from '@orpc/shared'
 
 /** A DOM `MessagePort` or an Electron `MessagePortMain`. Both hold messages until `start()`. */
 export type Port = SupportedMessagePort & { start(): void }
@@ -19,9 +20,12 @@ export function serve(router: Router<AnyContractRouter, Record<never, never>>, p
   port.start()
 }
 
-/** A typed client for contract `C` over `port`. */
+/**
+ * A typed client for contract `C` over `port`. A safe client answers every property, `then` included, so without
+ * `preventNativeAwait` resolving a Promise with one would call it as a thenable instead of handing it over.
+ */
 export function connect<C extends AnyContractRouter>(port: Port): Client<C> {
   const client: ContractRouterClient<C> = createORPCClient(new RPCLink({ port }))
   port.start()
-  return createSafeClient(client)
+  return preventNativeAwait(createSafeClient(client))
 }
