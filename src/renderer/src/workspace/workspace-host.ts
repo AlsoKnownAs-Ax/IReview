@@ -1,7 +1,6 @@
 import { WORKSPACE_HOST_PORT } from '../../../shared/contract/ports'
-import { workspaceContract, type WorkspaceClient } from '../../../shared/contract/workspace'
-import { createClient } from '../../../shared/rpc/client'
-import { createMessagePortChannel } from '../../../shared/rpc/port-channel'
+import type { workspaceContract, WorkspaceClient } from '../../../shared/contract/workspace'
+import { connect } from '../../../shared/rpc/rpc'
 
 /**
  * Resolves with a client for this Window's workspace host once preload forwards its port (SPEC §5.2). Call it before
@@ -13,7 +12,7 @@ export function connectWorkspaceHost(): Promise<WorkspaceClient> {
     window.addEventListener('message', function onPort({ source, origin, data, ports: [port] }): void {
       if (source !== window || origin !== location.origin || data !== WORKSPACE_HOST_PORT || !port) return
       window.removeEventListener('message', onPort)
-      resolve(createClient(workspaceContract, createMessagePortChannel(port)))
+      resolve(connect<typeof workspaceContract>(port))
     })
   })
 }

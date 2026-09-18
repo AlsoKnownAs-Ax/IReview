@@ -1,11 +1,11 @@
+import { toORPCError } from '@orpc/client'
 import { useEffect, useState, type ReactElement } from 'react'
 import type { WorkspaceClient } from '../../../shared/contract/workspace'
-import type { CodedError } from '../../../shared/rpc/contract'
 
-type HostConnection = { isConnected: boolean; error?: CodedError }
+type HostConnection = { isConnected: boolean; errorCode?: string }
 
-function hostStatusText({ isConnected, error }: HostConnection): string {
-  if (error) return `Workspace host unavailable (${error.code})`
+function hostStatusText({ isConnected, errorCode }: HostConnection): string {
+  if (errorCode) return `Workspace host unavailable (${errorCode})`
   if (isConnected) return 'Workspace host connected'
   return 'Connecting to workspace host…'
 }
@@ -19,7 +19,7 @@ export function App({ workspaceHost }: { workspaceHost: Promise<WorkspaceClient>
       .then((host) => host.ping())
       .then(({ error }): void => {
         if (!isMounted) return
-        if (error) return setConnection({ isConnected: false, error })
+        if (error) return setConnection({ isConnected: false, errorCode: toORPCError(error).code })
         setConnection({ isConnected: true })
       })
     return (): void => {
