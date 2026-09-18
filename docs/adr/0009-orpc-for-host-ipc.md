@@ -30,5 +30,12 @@ It does all this without any transport code of our own. `src/shared/rpc` keeps o
     - `INTERNAL_SERVER_ERROR`: anything unexpected
 - **Stream and event failures reject the iterator** rather than arriving as values. That includes a declared error thrown by a stream handler.
 - **Serialization.** Messages go through oRPC's RPC serializer rather than raw structured clone. Transfer lists are opt-in (`experimental_transfer`).
-- **Reconnect.** Reconnecting and resubscribing after a host restart is still ours to build on top.
+- **What `serve` and `connect` add on top of oRPC:**
+  - `serve` takes the contract as an explicit type argument (`serve<typeof contract>(router, port)`), so a router that leaves out a procedure doesn't compile.
+  - `serve` drops, and logs, any message oRPC can't decode. oRPC decodes in a listener nobody awaits, so one malformed message from the renderer would otherwise be an unhandled rejection that ends the host.
+  - `serve` logs every failure that isn't a declared error, because the client only sees a bare `INTERNAL_SERVER_ERROR`.
+  - `connect` settles calls once the port closes: calls in flight with an abort error, and later calls with `SERVICE_UNAVAILABLE`.
+  - `connect` keeps the client and every nested client from being awaited as a thenable. oRPC's safe client answers every property, `then` included.
+- **Reconnect.** Reconnecting and resubscribing after a host restart is still ours to build on top of `connect`.
+- **Event bursts.** `EventPublisher` keeps at most 100 buffered events per subscriber by default and silently drops the oldest. A publisher that can burst, such as the file watcher, must set `maxBufferedEvents` or coalesce its events.
 - **Platform rules.** oRPC runs in every process. Its core and the MessagePort adapter import nothing platform-specific, so dependency-cruiser's rules for `shared` still hold.
