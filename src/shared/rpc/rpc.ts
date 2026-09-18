@@ -7,6 +7,9 @@ import { RPCHandler } from '@orpc/server/message-port'
 /** A DOM `MessagePort` or an Electron `MessagePortMain`. Both hold messages until `start()`. */
 export type Port = SupportedMessagePort & { start(): void }
 
+/** What a caller of contract `C` holds: each call resolves to `{ error, data }` and never rejects. */
+export type Client<C extends AnyContractRouter> = SafeClient<ContractRouterClient<C>>
+
 /**
  * Answers calls to `router` on `port` (ADR-0009). Inputs are validated before a handler runs, and outputs and declared
  * errors before sending. Anything else a handler throws reaches the client as a bare `INTERNAL_SERVER_ERROR`.
@@ -16,8 +19,8 @@ export function serve(router: Router<AnyContractRouter, Record<never, never>>, p
   port.start()
 }
 
-/** A typed client for contract `C` over `port`. Calls resolve to `{ error, data }` and never reject. */
-export function connect<C extends AnyContractRouter>(port: Port): SafeClient<ContractRouterClient<C>> {
+/** A typed client for contract `C` over `port`. */
+export function connect<C extends AnyContractRouter>(port: Port): Client<C> {
   const client: ContractRouterClient<C> = createORPCClient(new RPCLink({ port }))
   port.start()
   return createSafeClient(client)

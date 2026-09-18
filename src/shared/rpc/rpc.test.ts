@@ -3,7 +3,7 @@ import { eventIterator, oc } from '@orpc/contract'
 import { EventPublisher, implement } from '@orpc/server'
 import { assert, expect, expectTypeOf, onTestFinished, test, vi } from 'vitest'
 import { z } from 'zod'
-import { connect, serve } from './rpc'
+import { connect, serve, type Client } from './rpc'
 
 const contract = {
   checkout: oc
@@ -18,11 +18,10 @@ const contract = {
 }
 const os = implement(contract)
 
-type Client = ReturnType<typeof connect<typeof contract>>
 type EndlessLogHost = { cancelled: boolean; yielded: number }
 
 /** Serves `router` on one end of a fresh MessageChannel and returns a client on the other. */
-function connectTo(router: Parameters<typeof serve>[0]): Client {
+function connectTo(router: Parameters<typeof serve>[0]): Client<typeof contract> {
   const { port1, port2 } = new MessageChannel()
   onTestFinished(() => port1.close())
   serve(router, port2)
@@ -30,7 +29,7 @@ function connectTo(router: Parameters<typeof serve>[0]): Client {
 }
 
 /** Serves a `log` that yields until the host cancels it. */
-function connectEndlessLog(): { client: Client; host: EndlessLogHost } {
+function connectEndlessLog(): { client: Client<typeof contract>; host: EndlessLogHost } {
   const host: EndlessLogHost = { cancelled: false, yielded: 0 }
   const client = connectTo({
     log: os.log.handler(async function* ({ signal }) {
