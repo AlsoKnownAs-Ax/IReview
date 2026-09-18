@@ -46,6 +46,7 @@
     "@orpc/client": "^1.15.1",
     "@orpc/contract": "^1.15.1",
     "@orpc/server": "^1.15.1",
+    "@orpc/shared": "^1.15.1",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "zod": "^4.6.5"
