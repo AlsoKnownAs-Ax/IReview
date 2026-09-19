@@ -7,15 +7,18 @@ export type GitRunOptions = {
   cwd?: string
   /** The binary to start; the system `git` on `PATH` unless a test overrides it. */
   executable?: string
+  /** Variables set on top of the inherited environment. */
+  env?: Record<string, string>
 }
 
 /** Runs the system git with `args`, no shell, and resolves to its stdout (ADR-0005). Never rejects. */
 export function runGit(
   args: string[],
-  { cwd, executable = 'git' }: GitRunOptions = {},
+  { cwd, executable = 'git', env }: GitRunOptions = {},
 ): Promise<Result<string, GitRunError>> {
+  const options = { cwd, env: { ...process.env, ...env }, encoding: 'utf8', windowsHide: true } as const
   return new Promise((resolve): void => {
-    execFile(executable, args, { cwd, encoding: 'utf8', windowsHide: true }, (error, stdout, stderr): void => {
+    execFile(executable, args, options, (error, stdout, stderr): void => {
       if (error) return resolve({ data: null, error: toGitRunError(error, stderr) })
       resolve({ data: stdout, error: null })
     })

@@ -2,6 +2,7 @@ import { implement } from '@orpc/server'
 import { workspaceContract } from '../../shared/contract/workspace'
 import { declaredError, serve } from '../../shared/rpc/rpc'
 import { detectGitVersion } from './git/git-version'
+import { resolveRepo } from './git/resolve-repo'
 
 const os = implement(workspaceContract)
 const router = os.router({
@@ -10,6 +11,11 @@ const router = os.router({
     const { data: version, error } = await detectGitVersion()
     if (error) throw declaredError(errors, error)
     return version
+  }),
+  resolveRepo: os.resolveRepo.handler(async ({ input, errors }) => {
+    const { data: repo, error } = await resolveRepo(input)
+    if (error) throw declaredError(errors, error)
+    return repo
   }),
 })
 
