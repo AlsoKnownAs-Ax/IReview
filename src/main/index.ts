@@ -1,5 +1,6 @@
 import { join } from 'node:path'
 import { app, BrowserWindow } from 'electron'
+import { startWorkspaceHost } from './broker'
 import { APP_ORIGIN } from './config'
 import { serveRendererOverAppProtocol, registerAppScheme } from './security/app-protocol'
 import { enforceCspOnDevServer } from './security/csp'
@@ -22,6 +23,7 @@ function createWindow(): void {
     },
   })
 
+  startWorkspaceHost(window)
   void window.loadURL(devServerUrl ?? `${APP_ORIGIN}/index.html`)
 }
 

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { launchApp } from '../fixtures/launch-app'
+import { launchApp } from '@tests/fixtures/launch-app'
 
 test('loads the renderer from app:// and serves nothing outside the bundle', async () => {
   const { window, close } = await launchApp()

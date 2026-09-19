@@ -1,6 +1,6 @@
 import { pathToFileURL } from 'node:url'
 import { net, protocol } from 'electron'
-import { APP_SCHEME } from '../config'
+import { APP_SCHEME } from '@main/config'
 import { resolveAppUrl } from './app-url'
 import { withContentSecurityPolicy } from './csp'
 
