@@ -3,7 +3,7 @@ import { eventIterator, oc } from '@orpc/contract'
 import { EventPublisher, implement, type Router } from '@orpc/server'
 import { assert, beforeEach, expect, expectTypeOf, onTestFinished, test, vi } from 'vitest'
 import { z } from 'zod'
-import { connect, serve, type Client } from './rpc'
+import { connect, declaredError, serve, type Client } from './rpc'
 
 const contract = {
   checkout: oc
@@ -16,6 +16,9 @@ const contract = {
     .errors({ LOG_UNAVAILABLE: {} }),
   changed: oc.output(eventIterator(z.object({ path: z.string() }))),
   repo: { head: oc.output(z.string()) },
+  discard: oc
+    .input(z.object({ path: z.string() }))
+    .errors({ DIRTY_WORKTREE: { data: z.object({ code: z.literal('DIRTY_WORKTREE'), path: z.string() }) } }),
 }
 const os = implement(contract)
 const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -140,6 +143,37 @@ test("a declared error reaches the client typed, minus fields its schema doesn't
   expectTypeOf(error.data).toEqualTypeOf<{ branch: string }>()
   expect([error.code, error.data]).toEqual(['BRANCH_CHECKED_OUT', { branch: 'main' }])
   expect(logged).not.toHaveBeenCalled()
+})
+
+test('declaredError turns a Result error into its declared code, carrying the error as data', async () => {
+  const client = connectTo({
+    discard: os.discard.handler(({ input, errors }) => {
+      // @ts-expect-error -- only codes the procedure declares; this call only checks types, its error is discarded
+      declaredError(errors, { code: 'BRANCH_CHECKED_OUT', branch: 'main' })
+      throw declaredError(errors, { code: 'DIRTY_WORKTREE', path: input.path })
+    }),
+  })
+
+  const { error } = await client.discard({ path: 'a.ts' })
+  assert(isDefinedError(error))
+  expect([error.code, error.data]).toEqual(['DIRTY_WORKTREE', { code: 'DIRTY_WORKTREE', path: 'a.ts' }])
+})
+
+test.each([
+  [
+    'a throw',
+    (): never => {
+      throw new Error('ENOENT: C:\\secret\\repo')
+    },
+  ],
+  ['a result the output schema rejects', (): { head: number } => ({ head: 42 })],
+])('%s becomes INTERNAL_SERVER_ERROR without leaking anything', async (_, checkout) => {
+  // @ts-expect-error -- handlers are not bound by the contract's types at runtime
+  const client = connectTo({ checkout: os.checkout.handler(checkout) })
+
+  const { error } = await client.checkout({ branch: 'main' })
+  expect(error).toMatchObject({ code: 'INTERNAL_SERVER_ERROR', data: undefined })
+  expect(JSON.stringify(error)).not.toContain('secret')
 })
 
 test.each([

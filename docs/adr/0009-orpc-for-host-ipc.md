@@ -18,6 +18,10 @@ It does all this without any transport code of our own. `src/shared/rpc` keeps o
 ## Consequences
 
 - **Throwing at the boundary.** A handler signals a declared error by throwing `errors.CODE({ data })`. This is the one place where host code throws on purpose. The code underneath stays `Result`-based.
+- **Errors carry their coded value.** Each declared error's `data` is the coded error itself, code included (for example `{ code: 'GIT_TOO_OLD', version }`).
+  - `DeclaredError<M>` derives that union from a procedure's error map.
+  - A handler turns a `Result` error into its declared code with `throw declaredError(errors, error)`.
+  - The client reads `error.data` as the same coded union once `isDefinedError` has narrowed it.
 - **Safe clients.** A call resolves to `{ error, data }` and never rejects.
   - A declared error arrives as an `ORPCError` with its code and its `data`, minus any fields the schema doesn't declare. `isDefinedError` narrows it.
   - The library's own codes are:
