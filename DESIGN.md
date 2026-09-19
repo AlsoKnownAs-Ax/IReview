@@ -27,6 +27,43 @@ colors:
   brand-secure: "#7a7fad"
   semantic-success: "#27a644"
   semantic-overlay: "#000000"
+  warning: "#d4a55a"
+  error: "#e0736f"
+  diff-added-bg: "#27a6441f"
+  diff-added-word: "#27a64447"
+  diff-added-gutter: "#4f9d64"
+  diff-removed-bg: "#e0736f1a"
+  diff-removed-word: "#e0736f40"
+  diff-removed-gutter: "#c0605c"
+  diff-modified-bg: "#5b93c41a"
+  diff-modified-word: "#5b93c433"
+  diff-modified-gutter: "#5b93c4"
+  ansi-black: "#34343a"
+  ansi-red: "#d4706c"
+  ansi-green: "#6fae7c"
+  ansi-yellow: "#c9a35c"
+  ansi-blue: "#6f9ad6"
+  ansi-magenta: "#b183c4"
+  ansi-cyan: "#5fa8ad"
+  ansi-white: "#d0d6e0"
+  ansi-bright-black: "#8a8f98"
+  ansi-bright-red: "#e8918c"
+  ansi-bright-green: "#8cc798"
+  ansi-bright-yellow: "#dcbd7e"
+  ansi-bright-blue: "#93b4e6"
+  ansi-bright-magenta: "#c9a0d8"
+  ansi-bright-cyan: "#80c0c4"
+  ansi-bright-white: "#f7f8f8"
+  syntax-comment: "#878c95"
+  syntax-keyword: "#b99acb"
+  syntax-string: "#94b889"
+  syntax-number: "#d0a47c"
+  syntax-function: "#8fabd8"
+  syntax-type: "#7fb9b3"
+  syntax-property: "#b4bcc8"
+  syntax-tag: "#cf8f8c"
+  syntax-operator: "#a4a9b2"
+  syntax-punctuation: "#9ba0a9"
 
 typography:
   display-xl:
@@ -546,3 +583,37 @@ Linear's depth is carried by surface ladder + hairline borders. The brand resist
 - Light mode is not documented because the marketing site does not ship a light theme.
 - Linear's actual product UI uses a richer color-tag palette (red, orange, yellow, green, blue, purple) for issue priorities and project labels — those colors live in the in-product surfaces shown in mockups.
 - The custom display, text, and mono families are proprietary; an open-source substitute is acceptable.
+
+## App
+
+The IReview desktop app reuses this system as-is: surfaces, ink, hairlines, `{colors.primary}`, `{colors.semantic-success}`, typography, spacing and radii. The front matter adds only the colors a code-review tool needs and the marketing site lacks: `diff-*`, `ansi-*`, `syntax-*`, `{colors.warning}` and `{colors.error}`.
+
+- **Dark only.** v1 ships the canvas and surface ladder above with no light theme.
+- **One accent.** Lavender stays the only chromatic UI color: `{colors.primary}` for the primary action and the selected item, `{colors.primary-focus}` for focus rings. New solid colors have lower OKLCH chroma than `{colors.primary}` (the `diff-added-*` tints reuse `{colors.semantic-success}` at low alpha) and only carry meaning (diff state, terminal output, syntax, status), never decoration, fills or chrome.
+- **Fonts.** Inter substitutes Linear Display/Text; JetBrains Mono substitutes Linear Mono (see Note on Font Substitutes).
+
+### Dense UI With Existing Tokens
+
+| Need | Token |
+|---|---|
+| Default UI text: tree and list rows, menus, inputs (denser than marketing `text-input`) | `{typography.body-sm}` 14px |
+| Button labels | `{typography.button}` 14px / 500 |
+| Tab titles, pane and section headers | `{typography.eyebrow}` 13px / 500 |
+| Meta, badges, status bar, counts | `{typography.caption}` 12px |
+| Editor, diff, terminal, paths, SHAs | `{typography.mono}` 13px |
+| Row padding and inline gaps | `{spacing.xxs}` 4px, `{spacing.xs}` 8px |
+| Pane and toolbar padding | `{spacing.sm}` 12px; dialogs `{spacing.md}` 16px |
+| Radii | `{rounded.xs}` rows and badges, `{rounded.md}` buttons, inputs and menus, `{rounded.lg}` dialogs |
+
+Secondary, tertiary and disabled text use `{colors.ink-muted}`, `{colors.ink-subtle}` and `{colors.ink-tertiary}`; panes sit on `{colors.canvas}` to `{colors.surface-2}` separated by `{colors.hairline}`.
+
+### New Colors
+
+| Group | Keys | Use |
+|---|---|---|
+| `diff-*` | `added`, `removed`, `modified` × `-bg`, `-word`, `-gutter` | `-bg` (changed line) and `-word` (intra-line change) are `#rrggbbaa` tints composited over `{colors.canvas}` to `{colors.surface-2}`; `-gutter` is the solid change marker. Added and removed derive from `{colors.semantic-success}` and `{colors.error}`; change them together. |
+| `ansi-*` | `black` … `white`, `bright-black` … `bright-white` | All 16 terminal colors. `black`, `white`, `bright-black` and `bright-white` equal `{colors.hairline-strong}`, `{colors.ink-muted}`, `{colors.ink-subtle}` and `{colors.ink}`; change them together. |
+| `syntax-*` | `comment`, `keyword`, `string`, `number`, `function`, `type`, `property`, `tag`, `operator`, `punctuation` | Editor highlighting. Plain identifiers use `{colors.ink-muted}`; constants use `{colors.syntax-number}`. |
+| `warning`, `error` | — | Status text, problem markers, failed checks, destructive confirmations. Success uses `{colors.semantic-success}`. |
+
+**Contrast.** `syntax-*`, `ansi-*` (except `{colors.ansi-black}`), `{colors.warning}` and `{colors.error}` hold at least 4.5:1 on `{colors.canvas}` through `{colors.surface-2}`, including on `diff-*-bg` tints; gutters hold at least 3:1. `-word` tints stack on `-bg` over short spans and can drop `{colors.syntax-comment}` and `{colors.error}` to about 3:1 and other syntax colors to about 3.9:1. `{colors.ansi-black}` is deliberately dark because TUIs paint it as a background.

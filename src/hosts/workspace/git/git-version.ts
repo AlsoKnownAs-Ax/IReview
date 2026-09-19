@@ -1,5 +1,5 @@
-import { MINIMUM_GIT_VERSION, type GitVersion, type GitVersionError } from '../../../shared/contract/workspace'
-import type { Result } from '../../../shared/result'
+import { MINIMUM_GIT_VERSION, type GitVersion, type GitVersionError } from '@shared/contract/workspace'
+import type { Result } from '@shared/result'
 import { runGit } from './run-git'
 
 // Plain `git version 2.45.1`, Windows `2.45.1.windows.1`, Apple `2.39.3 (Apple Git-146)`.

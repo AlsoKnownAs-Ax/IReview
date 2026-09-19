@@ -1,6 +1,6 @@
 import { oc } from '@orpc/contract'
 import { z } from 'zod'
-import type { Client, DeclaredError } from '../rpc/rpc'
+import type { Client, DeclaredError } from '@shared/rpc/rpc'
 
 const gitVersion = z.object({ major: z.number().int(), minor: z.number().int(), patch: z.number().int() })
 

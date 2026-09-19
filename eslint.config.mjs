@@ -10,6 +10,14 @@ export default defineConfig(
   js.configs.recommended,
   tseslint.configs.recommended,
   {
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        { patterns: [{ regex: '^\\.\\.(/|$)', message: 'Import from a parent folder through an @ alias instead.' }] },
+      ],
+    },
+  },
+  {
     files: [
       'src/main/**',
       'src/hosts/**',

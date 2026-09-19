@@ -1,11 +1,11 @@
 import { isDefinedError, toORPCError } from '@orpc/client'
-import { useEffect, useState, type ReactElement } from 'react'
+import { useEffect, useState } from 'react'
 import {
   MINIMUM_GIT_VERSION,
   type GitVersion,
   type GitVersionError,
   type WorkspaceClient,
-} from '../../../shared/contract/workspace'
+} from '@shared/contract/workspace'
 
 type HostConnection = { isConnected: boolean; errorCode?: string }
 
@@ -23,9 +23,10 @@ const GIT_ERROR_TEXT: { [C in GitErrorCode]: (error: GitErrorByCode[C]) => strin
   GIT_TOO_OLD: ({ version }) => needsGit(`git ${formatGitVersion(version)} is too old`),
 }
 
-function hostStatusText({ isConnected, errorCode }: HostConnection): string {
+function hostStatusText({ isConnected, errorCode }: HostConnection) {
   if (errorCode) return `Workspace host unavailable (${errorCode})`
   if (isConnected) return 'Workspace host connected'
+
   return 'Connecting to workspace host…'
 }
 
@@ -49,26 +50,27 @@ function gitStatusText({ version, error, errorCode }: GitCheck): string {
   return 'Checking git…'
 }
 
-export function App({ workspaceHost }: { workspaceHost: Promise<WorkspaceClient> }): ReactElement {
+export function App({ workspaceHost }: { workspaceHost: Promise<WorkspaceClient> }) {
   const [connection, setConnection] = useState<HostConnection>({ isConnected: false })
   const [git, setGit] = useState<GitCheck>({})
 
-  useEffect((): (() => void) => {
+  useEffect(() => {
     let isMounted = true
-    void workspaceHost.then((host): void => {
-      void host.ping().then(({ error }): void => {
+    void workspaceHost.then((host) => {
+      void host.ping().then(({ error }) => {
         if (!isMounted) return
         if (error) return setConnection({ isConnected: false, errorCode: toORPCError(error).code })
+
         setConnection({ isConnected: true })
       })
-      void host.gitVersion().then(({ data: version, error }): void => {
+      void host.gitVersion().then(({ data: version, error }) => {
         if (!isMounted) return
         if (isDefinedError(error)) return setGit({ error: error.data })
         if (error) return setGit({ errorCode: toORPCError(error).code })
         setGit({ version })
       })
     })
-    return (): void => {
+    return () => {
       isMounted = false
     }
   }, [workspaceHost])
