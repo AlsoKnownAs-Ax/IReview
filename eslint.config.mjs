@@ -12,6 +12,7 @@ export default defineConfig(
   {
     files: [
       'src/main/**',
+      'src/hosts/**',
       'src/preload/**',
       'src/shared/**',
       'tests/**',
