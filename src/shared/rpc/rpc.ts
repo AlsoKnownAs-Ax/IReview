@@ -27,7 +27,7 @@ export type Client<C extends AnyContractRouter> = SafeClient<ContractRouterClien
 export function serve<C extends AnyContractRouter = never>(
   router: Router<NoInfer<C>, Record<never, never>>,
   port: Port,
-): void {
+) {
   new RPCHandler(router, { interceptors: [onError(logUnexpected)] }).upgrade(decodableRequests(port))
   port.start()
 }
@@ -72,21 +72,21 @@ function logUnexpected(error: unknown): void {
 function decodableRequests(port: Port): MessagePortMainLike {
   let checked = Promise.resolve()
   return {
-    on: (event, callback): void => {
+    on: (event, callback) => {
       if (event === 'close') onMessagePortClose(port, () => callback())
       if (event !== 'message') return
-      onMessagePortMessage(port, (data): void => {
-        checked = checked.then(async (): Promise<void> => {
+      onMessagePortMessage(port, (data) => {
+        checked = checked.then(async () => {
           if (await isDecodable(data)) return callback({ data })
           console.error('rpc: dropped a message that is not an oRPC request')
         })
       })
     },
-    postMessage: (data, transfer): void => postMessagePortMessage(port, data, transfer),
+    postMessage: (data, transfer) => postMessagePortMessage(port, data, transfer),
   }
 }
 
-async function isDecodable(message: unknown): Promise<boolean> {
+async function isDecodable(message: unknown) {
   try {
     await decodeLikeHandler(message)
     return true

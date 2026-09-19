@@ -220,7 +220,7 @@ without an ADR unless they turn out to be hard to reverse.
 ### 3.11 Design (D19)
 
 - `DESIGN.md` gains an **App** section: prefixed color keys (`diff-*`, `ansi-*`, `syntax-*`, warning/error) that stay
-  muted and subordinate to the single lavender accent, and a 13px UI density scale.
+  muted and subordinate to the single lavender accent; app UI reuses the existing typography, spacing and radius tokens.
 - Tokens are generated into CSS variables (Tailwind v4 theme) and a TS module; Monaco and xterm themes derive from them.
 - Dark only in v1. Fonts: Inter (UI), JetBrains Mono (code, terminals) as documented substitutes.
 
