@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { launchApp } from '../fixtures/launch-app'
+import { launchApp } from '@tests/fixtures/launch-app'
 
 test('launches a window titled IReview', async () => {
   const { window, close } = await launchApp()
