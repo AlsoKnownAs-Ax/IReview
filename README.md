@@ -1,5 +1,8 @@
 # IReview
 
+## STATUS
+In progress
+
 [![CI](https://github.com/AlsoKnownAs-Ax/IReview/actions/workflows/ci.yml/badge.svg)](https://github.com/AlsoKnownAs-Ax/IReview/actions/workflows/ci.yml)
 
 A Windows + macOS desktop app for reviewing code — with editing — while coding agents run in parallel beside it.
