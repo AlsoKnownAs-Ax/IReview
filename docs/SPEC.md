@@ -268,12 +268,20 @@ main (one): lifecycle, repo→window registry, MessagePort broker, safeStorage, 
 
 ### 5.2 IPC
 
-- `src/shared/contract/`: one contract per host built from zod schemas; each member is an `rpc` (request → response),
-  `stream` (cancellable async iterable) or `event`. Errors are typed codes (e.g. `BRANCH_CHECKED_OUT`,
-  `DIRTY_WORKTREE`, `RATE_LIMITED`).
-- `src/shared/rpc/`: transport-agnostic client/server over a minimal channel; transports for DOM MessagePort, Electron
-  `MessagePortMain`/`parentPort`, and in-memory (tests). Servers validate all inputs; clients reconnect and resubscribe
-  after host restarts.
+- IPC runs on oRPC ([ADR-0009](./adr/0009-orpc-for-host-ipc.md)).
+- `src/shared/contract/`: one oRPC contract per host, built from zod schemas. Each member is one of:
+  - `rpc`: a procedure (request → response)
+  - `stream`: a procedure whose output is an `eventIterator`, a cancellable async iterable
+  - `event`: a procedure with no input whose event iterator is fed by an `EventPublisher`
+
+  Errors are typed codes declared per procedure (e.g. `BRANCH_CHECKED_OUT`, `DIRTY_WORKTREE`, `RATE_LIMITED`).
+- `src/shared/rpc/`: `serve` and `connect` over oRPC's MessagePort adapter, which covers the DOM `MessagePort` and
+  Electron `MessagePortMain`. Tests use Node's `MessageChannel`.
+  - Servers validate all inputs and drop messages oRPC can't decode.
+  - Clients are safe clients: calls resolve to `{ error, data }`. After their port closes, calls settle with an error
+    instead of hanging.
+  - Reconnecting and resubscribing after host restarts is built on top of `connect`, not by `src/shared/rpc/` itself
+    ([ADR-0009](./adr/0009-orpc-for-host-ipc.md)).
 - Ports are created in main and handed to host and renderer; preload exposes only port retrieval and platform info.
 - **Terminal data path:** PTY output feeds the headless mirror and a per-Terminal buffer flushed every 8 ms or 64 KB;
   the renderer acknowledges written characters; the host pauses the PTY above 100k unacknowledged characters and
@@ -344,7 +352,7 @@ Order is fixed (D29): the local review loop is dogfoodable before GitHub work st
 
 - Scaffold (electron-vite, TS strict, ESLint, dependency-cruiser), CI on Windows + macOS.
 - `DESIGN.md` App section and token generator (CSS variables + TS module).
-- Security baseline (§5.1; Electron fuses deferred to M6), rpc library with three transports, broker, supervisor.
+- Security baseline (§5.1; Electron fuses deferred to M6), rpc on oRPC ([ADR-0009](./adr/0009-orpc-for-host-ipc.md)), broker, supervisor.
 - Registry: welcome Window, open folder → new Window, same Repo → focus, non-git → `git init` flow, linked Worktree → Repo Window.
 - Command palette, keymap resolver, `keymap.json` hot reload.
 

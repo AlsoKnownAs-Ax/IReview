@@ -9,6 +9,6 @@ Each Window gets two Electron utility processes: a **workspace host** (git, file
 ## Consequences
 
 - Hosts never call each other; the renderer coordinates them.
-- Every contract is validated with zod, because the renderer is the least-trusted peer.
+- Every contract is validated with zod, because the renderer is the least-trusted peer. Contracts and their transport are oRPC ([ADR-0009](./0009-orpc-for-host-ipc.md)).
 - PTYs outlive renderer reloads and crashes: the renderer re-attaches with a snapshot and a sequence number. The same mechanism serves dev hot reload and restore.
 - A few idle Node processes per window is an accepted cost.
