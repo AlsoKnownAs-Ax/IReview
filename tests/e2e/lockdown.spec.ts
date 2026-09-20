@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { launchApp, type LaunchedApp } from '../fixtures/launch-app'
+import { launchApp, type LaunchedApp } from '@tests/fixtures/launch-app'
 
 /** What the main process saw, recorded as it happens so a slow network can't hide a regression. */
 interface Probe {

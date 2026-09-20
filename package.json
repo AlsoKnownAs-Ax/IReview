@@ -14,7 +14,7 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
-    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.preload.json && tsc --noEmit -p tsconfig.web.json",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint . && depcruise src --config .dependency-cruiser.cjs",
@@ -44,11 +44,16 @@
     "typescript-eslint": "^8.70.0",
     "vite": "^7.3.6",
     "vitest": "^5.0.0",
-    "yaml": "^2.9.1",
-    "zod": "^4.6.5"
+    "yaml": "^2.9.1"
   },
   "dependencies": {
+    "@orpc/client": "^1.15.1",
+    "@orpc/contract": "^1.15.1",
+    "@orpc/server": "^1.15.1",
+    "@orpc/shared": "^1.15.1",
+    "@orpc/standard-server-peer": "^1.15.1",
     "react": "^19.3.0",
-    "react-dom": "^19.3.0"
+    "react-dom": "^19.3.0",
+    "zod": "^4.6.5"
   }
 }
