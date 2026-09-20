@@ -1,5 +1,4 @@
 import { toORPCError } from '@orpc/client'
-import type { ReactElement } from 'react'
 import { useEffect, useState } from 'react'
 import type { WorkspaceClient } from '@shared/contract/workspace'
 
