@@ -12,7 +12,7 @@ function hostStatusText({ isConnected, errorCode }: HostConnection) {
   return 'Connecting to workspace host…'
 }
 
-export function App({ workspaceHost }: { workspaceHost: Promise<WorkspaceClient> }): ReactElement {
+export function App({ workspaceHost }: { workspaceHost: Promise<WorkspaceClient> }) {
   const [connection, setConnection] = useState<HostConnection>({ isConnected: false })
 
   useEffect(() => {
