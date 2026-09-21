@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { MINIMUM_GIT_VERSION } from '@shared/contract/workspace'
+import { MINIMUM_GIT_VERSION } from '@/shared/contract/git'
 import { checkGitVersion, parseGitVersion } from './git-version'
 
 const { major, minor } = MINIMUM_GIT_VERSION

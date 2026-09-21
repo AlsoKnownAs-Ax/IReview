@@ -7,8 +7,8 @@ import { z } from 'zod'
  */
 export const TOKEN_PATHS = {
   design: 'DESIGN.md',
-  css: 'src/renderer/src/theme/tokens.css',
-  ts: 'src/renderer/src/theme/tokens.ts',
+  css: 'src/app/renderer/theme/tokens.css',
+  ts: 'src/app/renderer/theme/tokens.ts',
 } as const
 
 const HEADER = '/* Generated from DESIGN.md by scripts/gen-tokens.ts. Do not edit; run `pnpm gen:tokens`. */'

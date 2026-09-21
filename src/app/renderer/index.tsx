@@ -1,8 +1,8 @@
-import './app/zod-jitless'
+import './zod-jitless'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { App } from './app/App'
-import { connectWorkspaceHost } from './workspace/workspace-host'
+import { connectWorkspaceHost } from '@/repo/renderer'
+import { App } from './App'
 import './theme/index.css'
 
 const root = document.getElementById('root')

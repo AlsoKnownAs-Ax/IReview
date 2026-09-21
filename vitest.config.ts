@@ -4,11 +4,7 @@ import { configDefaults, defineConfig } from 'vitest/config'
 export default defineConfig({
   resolve: {
     alias: {
-      '@main': resolve('src/main'),
-      '@hosts': resolve('src/hosts'),
-      '@preload': resolve('src/preload'),
-      '@renderer': resolve('src/renderer/src'),
-      '@shared': resolve('src/shared'),
+      '@': resolve('src'),
       '@tests': resolve('tests'),
     },
   },

@@ -16,8 +16,11 @@
   "include": [
     "electron.vite.config.ts",
     "vitest.config.ts",
-    "src/main/**/*",
-    "src/hosts/**/*",
+    "src/*/main/**/*",
+    "src/*/host/**/*",
+    "src/*/core/**/*",
+    "src/*/contract/**/*",
+    "src/git/**/*",
     "src/shared/**/*",
     "scripts/**/*",
     "playwright.config.ts",

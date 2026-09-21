@@ -1,6 +1,6 @@
 import { join } from 'node:path'
 import { MessageChannelMain, utilityProcess, type BrowserWindow } from 'electron'
-import { WORKSPACE_HOST_PORT } from '@shared/contract/ports'
+import { WORKSPACE_HOST_PORT } from '@/shared/contract/ports'
 
 /**
  * Starts `window`'s workspace host and, on every page load, hands the host and the renderer the two ends of a fresh

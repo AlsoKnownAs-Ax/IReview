@@ -335,7 +335,8 @@ scripts/{gen-tokens.ts,record-github.ts,load-harness.mjs}
 
 Single package (no pnpm workspaces). One path alias, `@/`, so a new module costs no config edits. Every subfolder
 listed above has an `index.ts` front door; there is no module-root barrel, because one would re-export host code
-into the renderer's import graph.
+into the renderer's import graph. `src/app/host/` is the exception: a utility process is started by path rather
+than imported, so it holds one entry point per host (`workspace.ts`, later `pty.ts`) and no front door.
 
 dependency-cruiser enforces ([ADR-0010](./adr/0010-domain-modules-behind-front-doors.md)):
 

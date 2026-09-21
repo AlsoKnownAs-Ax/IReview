@@ -1,0 +1,5 @@
+@import 'tailwindcss';
+@import './tokens.css';
+
+/* Vite's root is this folder, so Tailwind would only scan `app`. Every module's renderer uses these utilities. */
+@source '../../../*/renderer/**/*.{ts,tsx}';

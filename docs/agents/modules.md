@@ -53,7 +53,8 @@ A module creates only the ones it needs.
 
 Each subfolder has its own front door. **There is no module-root `index.ts`**: a single barrel would re-export
 host code into the renderer's import graph, which is what [ADR-0006](../adr/0006-per-window-utility-hosts.md)
-exists to prevent.
+exists to prevent. `src/app/host/` is the one subfolder without a front door: a utility process is started by
+path rather than imported, so it holds one entry point per host (`workspace.ts`, later `pty.ts`).
 
 ```
 review/
@@ -84,7 +85,9 @@ the stricter rule from ADR-0006 still holds: hosts never call each other, and th
 Two things are imported by everyone and own no domain:
 
 - **`src/shared/`** — `rpc` (`serve`/`connect`), `result`, and one `contract/<host>.ts` per utility process that
-  composes the contract slices its domains export. Platform-free: no Node built-ins, no Electron.
+  composes the contract slices its domains export. Alongside them sit the few wire shapes no domain owns, such as
+  `contract/ports.ts` and `contract/git.ts`, whose schemas describe the git CLI that `repo`, `session` and `review`
+  all shell out to. Platform-free: no Node built-ins, no Electron.
 - **`src/git/`** — the system git CLI behind one interface: invocation policy (`--no-optional-locks`, `LC_ALL=C`),
   porcelain parsing, the per-Worktree write mutex, long-lived `cat-file --batch`
   ([ADR-0005](../adr/0005-git-cli-in-utility-process.md)). Host-only, so it has no process seam and no subfolders.

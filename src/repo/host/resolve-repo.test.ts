@@ -1,12 +1,12 @@
 import { mkdir, realpath, symlink } from 'node:fs/promises'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { runGit } from '@/git'
 import { buildRepo, type TempRepo } from '@tests/fixtures/repo-builder'
 import { isWslPath, resolveRepo } from './resolve-repo'
-import { runGit } from './run-git'
 
 // Calls through, so a test can assert git never ran.
-vi.mock('./run-git', { spy: true })
+vi.mock('@/git', { spy: true })
 
 describe('isWslPath', () => {
   it.each(['\\\\wsl$\\Ubuntu\\home', '//Wsl.LocalHost/Ubuntu', '\\\\?\\UNC\\wsl.localhost\\Ubuntu'])(

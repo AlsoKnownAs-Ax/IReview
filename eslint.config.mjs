@@ -19,9 +19,10 @@ export default defineConfig(
   },
   {
     files: [
-      'src/main/**',
-      'src/hosts/**',
-      'src/preload/**',
+      'src/*/main/**',
+      'src/*/host/**',
+      'src/*/preload/**',
+      'src/git/**',
       'src/shared/**',
       'scripts/**',
       'tests/**',
@@ -31,7 +32,7 @@ export default defineConfig(
     languageOptions: { globals: globals.node },
   },
   {
-    files: ['src/renderer/**/*.{ts,tsx}'],
+    files: ['src/*/renderer/**/*.{ts,tsx}'],
     extends: [reactHooks.configs.flat.recommended],
     languageOptions: { globals: globals.browser },
   },
