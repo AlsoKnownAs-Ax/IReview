@@ -65,6 +65,7 @@ export type DeclaredError<M extends ErrorMap> = {
 export function declaredError<M extends ErrorMap>(errors: ORPCErrorConstructorMap<M>, error: DeclaredError<M>): Error {
   const { code } = error as { code: keyof M }
   const construct = errors[code] as unknown as (options: { data: unknown }) => Error
+
   return construct({ data: error })
 }
 

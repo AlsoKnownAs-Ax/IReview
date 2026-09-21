@@ -48,6 +48,7 @@ function gitStatusText({ version, error, errorCode }: GitCheck): string {
   if (errorCode) return `Could not check git (${errorCode})`
   if (error) return gitErrorText(error)
   if (version) return `git ${formatGitVersion(version)}`
+
   return 'Checking git…'
 }
 
@@ -68,6 +69,7 @@ export function App({ workspaceHost }: { workspaceHost: Promise<WorkspaceClient>
         if (!isMounted) return
         if (isDefinedError(error)) return setGit({ error: error.data })
         if (error) return setGit({ errorCode: toORPCError(error).code })
+
         setGit({ version })
       })
     })

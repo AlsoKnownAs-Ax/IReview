@@ -8,7 +8,11 @@ const router = os.router({
   ping: os.ping.handler(() => 'pong' as const),
   gitVersion: os.gitVersion.handler(async ({ errors }) => {
     const { data: version, error } = await detectGitVersion()
-    if (error) throw declaredError(errors, error)
+
+    if (error) {
+      throw declaredError(errors, error)
+    }
+
     return version
   }),
 })
