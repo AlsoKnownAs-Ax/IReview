@@ -23,16 +23,33 @@ const NOT_A_REPO_EXIT_CODE = 128
 const NOT_A_REPO_MESSAGE = 'not a git repository'
 
 export async function resolveRepo({ path }: ResolveRepoInput): Promise<Result<ResolvedRepo, ResolveRepoError>> {
-  if (isWslPath(path)) return { data: null, error: { code: 'WSL_UNSUPPORTED', path } }
+  if (isWslPath(path)) {
+    return { data: null, error: { code: 'WSL_UNSUPPORTED', path } }
+  }
+
   // Checked before git: a missing `cwd` would otherwise report `GIT_MISSING`.
-  if (!(await isFolder(path))) return { data: null, error: { code: 'PATH_NOT_FOUND', path } }
+  if (!(await isFolder(path))) {
+    return { data: null, error: { code: 'PATH_NOT_FOUND', path } }
+  }
+
   const { data: stdout, error } = await runGit(REV_PARSE_ARGS, { cwd: path, env: C_LOCALE_ENV })
-  if (error && isNotARepo(error)) return { data: null, error: { code: 'NOT_A_REPO', path } }
-  if (error) return { data: null, error }
+
+  if (error && isNotARepo(error)) {
+    return { data: null, error: { code: 'NOT_A_REPO', path } }
+  }
+
+  if (error) {
+    return { data: null, error }
+  }
+
   // Real paths resolve symlinks and Windows 8.3 short names, so the same Repo always compares equal.
   const [identity, checkoutRoot] = await Promise.all(stdout.split('\n', 2).map(realPathOf))
+
   // Absent only if the folder vanished while git ran.
-  if (!identity || !checkoutRoot) return { data: null, error: { code: 'PATH_NOT_FOUND', path } }
+  if (!identity || !checkoutRoot) {
+    return { data: null, error: { code: 'PATH_NOT_FOUND', path } }
+  }
+
   return { data: { identity, checkoutRoot }, error: null }
 }
 
@@ -49,11 +66,17 @@ function isFolder(path: string): Promise<boolean> {
 
 /** `realpath('')` resolves to the process's own cwd, so an empty path is absent instead. */
 async function realPathOf(path: string): Promise<string | undefined> {
-  if (!path) return undefined
+  if (!path) {
+    return undefined
+  }
+
   return realpath(path).catch((): undefined => undefined)
 }
 
 function isNotARepo(error: GitRunError): boolean {
-  if (error.code !== 'GIT_FAILED') return false
+  if (error.code !== 'GIT_FAILED') {
+    return false
+  }
+
   return error.exitCode === NOT_A_REPO_EXIT_CODE && error.stderr.includes(NOT_A_REPO_MESSAGE)
 }

@@ -20,7 +20,10 @@ export function runGit(
 
   return new Promise((resolve): void => {
     execFile(executable, args, options, (error, stdout, stderr): void => {
-      if (error) return resolve({ data: null, error: toGitRunError(error, stderr) })
+      if (error) {
+        return resolve({ data: null, error: toGitRunError(error, stderr) })
+      }
+
       resolve({ data: stdout, error: null })
     })
   })
@@ -37,6 +40,9 @@ function toGitRunError(error: ExecFileException, stderr: string): GitRunError {
 
 /** Absent when git was killed or its output overflowed instead of exiting. */
 function exitCodeOf({ code }: ExecFileException): number | undefined {
-  if (typeof code === 'number') return code
+  if (typeof code === 'number') {
+    return code
+  }
+
   return undefined
 }
