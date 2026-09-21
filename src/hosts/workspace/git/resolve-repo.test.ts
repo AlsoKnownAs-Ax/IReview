@@ -6,10 +6,7 @@ import { isWslPath, resolveRepo } from './resolve-repo'
 import { runGit } from './run-git'
 
 // The real runner, wrapped in a spy so a test can tell whether git ran at all.
-vi.mock('./run-git', async (importOriginal) => {
-  const { runGit } = await importOriginal<typeof import('./run-git')>()
-  return { runGit: vi.fn(runGit) }
-})
+vi.mock('./run-git', { spy: true })
 
 describe('isWslPath', () => {
   it.each(['\\\\wsl$\\Ubuntu\\home', '//Wsl.LocalHost/Ubuntu', '\\\\?\\UNC\\wsl.localhost\\Ubuntu'])(
