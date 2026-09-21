@@ -22,7 +22,6 @@ const C_LOCALE_ENV = { LC_ALL: 'C' }
 const NOT_A_REPO_EXIT_CODE = 128
 const NOT_A_REPO_MESSAGE = 'not a git repository'
 
-/** The Repo a folder belongs to, identified by the real path of its git common dir (SPEC §3.1). */
 export async function resolveRepo({ path }: ResolveRepoInput): Promise<Result<ResolvedRepo, ResolveRepoError>> {
   if (isWslPath(path)) return { data: null, error: { code: 'WSL_UNSUPPORTED', path } }
   // Checked before git: a missing `cwd` would otherwise report `GIT_MISSING`.
@@ -37,7 +36,6 @@ export async function resolveRepo({ path }: ResolveRepoInput): Promise<Result<Re
   return { data: { identity, checkoutRoot }, error: null }
 }
 
-/** Whether `path` is inside WSL, which IReview refuses before running git. */
 export function isWslPath(path: string): boolean {
   return WSL_PATH.test(path)
 }
@@ -49,7 +47,7 @@ function isFolder(path: string): Promise<boolean> {
   )
 }
 
-/** Absent for an empty or missing path (`realpath('')` would be the process's own cwd). */
+/** `realpath('')` resolves to the process's own cwd, so an empty path is absent instead. */
 async function realPathOf(path: string): Promise<string | undefined> {
   if (!path) return undefined
   return realpath(path).catch((): undefined => undefined)

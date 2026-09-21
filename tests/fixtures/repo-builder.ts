@@ -6,8 +6,7 @@ import { promisify } from 'node:util'
 
 const execFileAsync = promisify(execFile)
 
-/** Used as both author and committer, so every commit is reproducible. */
-const AUTHOR = { name: 'IReview Test', email: 'test@ireview.invalid', date: '2026-01-01T00:00:00Z' }
+const COMMIT_IDENTITY = { name: 'IReview Test', email: 'test@ireview.invalid', date: '2026-01-01T00:00:00Z' }
 
 export type TempRepo = {
   /** The temp directory holding the Main checkout, linked Worktrees and the empty global git config. */
@@ -30,12 +29,12 @@ export async function buildRepo(): Promise<TempRepo> {
     ...Object.fromEntries(Object.entries(process.env).filter(([name]): boolean => !name.startsWith('GIT_'))),
     GIT_CONFIG_GLOBAL: globalConfig,
     GIT_CONFIG_NOSYSTEM: '1',
-    GIT_AUTHOR_NAME: AUTHOR.name,
-    GIT_AUTHOR_EMAIL: AUTHOR.email,
-    GIT_AUTHOR_DATE: AUTHOR.date,
-    GIT_COMMITTER_NAME: AUTHOR.name,
-    GIT_COMMITTER_EMAIL: AUTHOR.email,
-    GIT_COMMITTER_DATE: AUTHOR.date,
+    GIT_AUTHOR_NAME: COMMIT_IDENTITY.name,
+    GIT_AUTHOR_EMAIL: COMMIT_IDENTITY.email,
+    GIT_AUTHOR_DATE: COMMIT_IDENTITY.date,
+    GIT_COMMITTER_NAME: COMMIT_IDENTITY.name,
+    GIT_COMMITTER_EMAIL: COMMIT_IDENTITY.email,
+    GIT_COMMITTER_DATE: COMMIT_IDENTITY.date,
   }
   const git = async (args: string[], cwd = mainCheckout): Promise<void> => {
     await execFileAsync('git', args, { cwd, env })

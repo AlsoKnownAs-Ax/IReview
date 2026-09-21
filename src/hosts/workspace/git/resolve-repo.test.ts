@@ -5,7 +5,7 @@ import { buildRepo, type TempRepo } from '@tests/fixtures/repo-builder'
 import { isWslPath, resolveRepo } from './resolve-repo'
 import { runGit } from './run-git'
 
-// The real runner, wrapped in a spy so a test can tell whether git ran at all.
+// Calls through, so a test can assert git never ran.
 vi.mock('./run-git', { spy: true })
 
 describe('isWslPath', () => {
