@@ -7,8 +7,8 @@ import {
   type MessagePortMainLike,
   type SupportedMessagePort,
 } from '@orpc/client/message-port'
-import type { AnyContractRouter, ContractRouterClient } from '@orpc/contract'
-import { onError, type Router } from '@orpc/server'
+import type { AnyContractRouter, ContractRouterClient, ErrorMap, ErrorMapItem, InferSchemaOutput } from '@orpc/contract'
+import { onError, type ORPCErrorConstructorMap, type Router } from '@orpc/server'
 import { RPCHandler } from '@orpc/server/message-port'
 import { isObject, preventNativeAwait } from '@orpc/shared'
 import { decodeRequestMessage, deserializeRequestMessage, type EncodedMessage } from '@orpc/standard-server-peer'
@@ -51,6 +51,22 @@ export function connect<C extends AnyContractRouter>(port: Port): Client<C> {
   const client: ContractRouterClient<C> = createORPCClient(link)
   port.start()
   return unawaitable(createSafeClient(client))
+}
+
+/** A procedure's declared errors as coded values: each is the `data` of its entry in the error map, code included. */
+export type DeclaredError<M extends ErrorMap> = {
+  [C in keyof M]: M[C] extends ErrorMapItem<infer S> ? InferSchemaOutput<S> : never
+}[keyof M]
+
+/**
+ * The error a handler throws for a `Result` error: the one its procedure declares under the same code, carrying the
+ * error as `data` (ADR-0009). This is the one throw at the oRPC boundary; the code below a handler stays Result-based.
+ */
+export function declaredError<M extends ErrorMap>(errors: ORPCErrorConstructorMap<M>, error: DeclaredError<M>): Error {
+  const { code } = error as { code: keyof M }
+  const construct = errors[code] as unknown as (options: { data: unknown }) => Error
+
+  return construct({ data: error })
 }
 
 /** oRPC would post a call on a closed port to nobody and wait for an answer forever. */
