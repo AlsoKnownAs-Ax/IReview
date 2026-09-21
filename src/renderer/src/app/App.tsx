@@ -6,6 +6,7 @@ import {
   type GitVersionError,
   type WorkspaceClient,
 } from '@shared/contract/workspace'
+import { WelcomeWindow } from './WelcomeWindow'
 
 type HostConnection = { isConnected: boolean; errorCode?: string }
 
@@ -76,10 +77,10 @@ export function App({ workspaceHost }: { workspaceHost: Promise<WorkspaceClient>
   }, [workspaceHost])
 
   return (
-    <>
-      <h1>IReview</h1>
+    <main className="min-h-screen bg-canvas text-ink">
+      <WelcomeWindow />
       <p data-testid="workspace-host-status">{hostStatusText(connection)}</p>
       <p data-testid="git-version-status">{gitStatusText(git)}</p>
-    </>
+    </main>
   )
 }

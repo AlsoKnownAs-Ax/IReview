@@ -23,6 +23,7 @@ export default defineConfig(
       'src/hosts/**',
       'src/preload/**',
       'src/shared/**',
+      'scripts/**',
       'tests/**',
       '*.config.{ts,mjs,cjs}',
       '.dependency-cruiser.cjs',
