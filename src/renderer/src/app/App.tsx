@@ -1,6 +1,7 @@
 import { toORPCError } from '@orpc/client'
 import { useEffect, useState } from 'react'
 import type { WorkspaceClient } from '@shared/contract/workspace'
+import { WelcomeWindow } from './WelcomeWindow'
 
 type HostConnection = { isConnected: boolean; errorCode?: string }
 
@@ -31,7 +32,7 @@ export function App({ workspaceHost }: { workspaceHost: Promise<WorkspaceClient>
 
   return (
     <main className="min-h-screen bg-canvas text-ink">
-      <h1>IReview</h1>
+      <WelcomeWindow />
       <p data-testid="workspace-host-status">{hostStatusText(connection)}</p>
     </main>
   )
