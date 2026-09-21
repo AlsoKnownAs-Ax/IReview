@@ -174,23 +174,6 @@ test.each([
   const { error } = await client.checkout({ branch: 'main' })
   expect(error).toMatchObject({ code: 'INTERNAL_SERVER_ERROR', data: undefined })
   expect(JSON.stringify(error)).not.toContain('secret')
-})
-
-test.each([
-  [
-    'a throw',
-    (): never => {
-      throw new Error('ENOENT: C:\\secret\\repo')
-    },
-  ],
-  ['a result the output schema rejects', (): { head: number } => ({ head: 42 })],
-])('%s becomes INTERNAL_SERVER_ERROR without leaking anything', async (_, checkout) => {
-  // @ts-expect-error -- handlers are not bound by the contract's types at runtime
-  const client = connectTo({ checkout: os.checkout.handler(checkout) })
-
-  const { error } = await client.checkout({ branch: 'main' })
-  expect(error).toMatchObject({ code: 'INTERNAL_SERVER_ERROR', data: undefined })
-  expect(JSON.stringify(error)).not.toContain('secret')
   expect(logged).toHaveBeenCalledWith('rpc: a call failed', expect.any(Error))
 })
 

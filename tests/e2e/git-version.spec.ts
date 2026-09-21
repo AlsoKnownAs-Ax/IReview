@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process'
 import { expect, test } from '@playwright/test'
-import { launchApp, type LaunchedApp } from '../fixtures/launch-app'
+import { launchApp, type LaunchedApp } from '@tests/fixtures/launch-app'
 
 let launched: LaunchedApp
 

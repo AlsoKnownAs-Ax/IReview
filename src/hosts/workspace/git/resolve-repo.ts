@@ -1,6 +1,6 @@
 import { realpath, stat } from 'node:fs/promises'
-import type { GitRunError, ResolvedRepo, ResolveRepoError, ResolveRepoInput } from '../../../shared/contract/workspace'
-import type { Result } from '../../../shared/result'
+import type { GitRunError, ResolvedRepo, ResolveRepoError, ResolveRepoInput } from '@shared/contract/workspace'
+import type { Result } from '@shared/result'
 import { runGit } from './run-git'
 
 // `\\wsl$\<distro>` and `\\wsl.localhost\<distro>`, optionally as `\\?\UNC\…`, either slash style, any case (SPEC §3.1).

@@ -1,6 +1,6 @@
 import { execFile, type ExecFileException } from 'node:child_process'
-import type { GitRunError } from '../../../shared/contract/workspace'
-import type { Result } from '../../../shared/result'
+import type { GitRunError } from '@shared/contract/workspace'
+import type { Result } from '@shared/result'
 
 export type GitRunOptions = {
   /** Must exist: a missing `cwd` fails to spawn just like a missing git, so it also reports `GIT_MISSING`. */
@@ -17,6 +17,7 @@ export function runGit(
   { cwd, executable = 'git', env }: GitRunOptions = {},
 ): Promise<Result<string, GitRunError>> {
   const options = { cwd, env: { ...process.env, ...env }, encoding: 'utf8', windowsHide: true } as const
+
   return new Promise((resolve): void => {
     execFile(executable, args, options, (error, stdout, stderr): void => {
       if (error) return resolve({ data: null, error: toGitRunError(error, stderr) })
@@ -27,7 +28,10 @@ export function runGit(
 
 function toGitRunError(error: ExecFileException, stderr: string): GitRunError {
   // A process that never started fails in the `spawn` syscall (ENOENT, EACCES); anything later is git's own failure.
-  if (error.syscall?.startsWith('spawn')) return { code: 'GIT_MISSING' }
+  if (error.syscall?.startsWith('spawn')) {
+    return { code: 'GIT_MISSING' }
+  }
+
   return { code: 'GIT_FAILED', exitCode: exitCodeOf(error), stderr }
 }
 

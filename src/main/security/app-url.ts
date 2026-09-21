@@ -1,5 +1,5 @@
 import { join, sep } from 'node:path'
-import { APP_HOST, APP_SCHEME } from '../config'
+import { APP_HOST, APP_SCHEME } from '@main/config'
 
 // Separators other than `/`, drive-letter colons and NUL.
 const FORBIDDEN_PATH_CHARS = /[\\:\0]/

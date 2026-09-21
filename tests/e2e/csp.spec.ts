@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { launchApp, type LaunchedApp } from '../fixtures/launch-app'
+import { launchApp, type LaunchedApp } from '@tests/fixtures/launch-app'
 
 let launched: LaunchedApp
 
@@ -20,7 +20,8 @@ test('every app:// response carries a strict CSP and the renderer loads without 
     document.addEventListener('securitypolicyviolation', (event) => window.cspViolations.push(event.violatedDirective))
   `)
   await window.reload()
-  await expect(window.locator('h1')).toHaveText('IReview')
+  // The welcome Window is fully rendered, so its styles count towards the violations below.
+  await expect(window.getByRole('button', { name: 'Open Folder' })).toBeVisible()
 
   const policies = await window.evaluate(async () => {
     const policy = async (path: string) => (await fetch(path)).headers.get('content-security-policy')

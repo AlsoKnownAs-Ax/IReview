@@ -1,7 +1,7 @@
 import { mkdir, realpath, symlink } from 'node:fs/promises'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { buildRepo, type TempRepo } from '../../../../tests/fixtures/repo-builder'
+import { buildRepo, type TempRepo } from '@tests/fixtures/repo-builder'
 import { isWslPath, resolveRepo } from './resolve-repo'
 import { runGit } from './run-git'
 

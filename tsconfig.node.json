@@ -1,4 +1,5 @@
 {
+  "extends": "./tsconfig.paths.json",
   "compilerOptions": {
     "target": "ES2023",
     "lib": ["ES2023"],
@@ -9,7 +10,8 @@
     "noUncheckedIndexedAccess": true,
     "isolatedModules": true,
     "skipLibCheck": true,
-    "noEmit": true
+    "noEmit": true,
+    "allowImportingTsExtensions": true
   },
   "include": [
     "electron.vite.config.ts",
@@ -17,6 +19,7 @@
     "src/main/**/*",
     "src/hosts/**/*",
     "src/shared/**/*",
+    "scripts/**/*",
     "playwright.config.ts",
     "tests/**/*"
   ]
