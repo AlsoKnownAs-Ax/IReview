@@ -17,7 +17,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.preload.json && tsc --noEmit -p tsconfig.web.json",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "eslint . && depcruise src --config .dependency-cruiser.cjs",
+    "lint": "eslint . && depcruise src tests/fixtures --config .dependency-cruiser.cjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "gen:tokens": "node scripts/gen-tokens.ts",

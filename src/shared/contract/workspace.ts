@@ -27,10 +27,34 @@ const gitVersionErrors = {
 
 export type GitVersionError = DeclaredError<typeof gitVersionErrors>
 
+const resolveRepoInput = z.object({ path: z.string() })
+
+export type ResolveRepoInput = z.infer<typeof resolveRepoInput>
+
+/** A folder's Repo: `identity` is the real path of its git common dir, the same for the Main checkout and its Worktrees. */
+const resolvedRepo = z.object({
+  identity: z.string(),
+  /** The real path of the Main checkout or linked Worktree the folder is in. */
+  checkoutRoot: z.string(),
+})
+
+export type ResolvedRepo = z.infer<typeof resolvedRepo>
+
+const resolveRepoErrors = {
+  ...gitRunErrors,
+  /** No folder can be read at `path`: missing, a file, not accessible, or gone before git answered. */
+  PATH_NOT_FOUND: { data: z.object({ code: z.literal('PATH_NOT_FOUND'), path: z.string() }) },
+  NOT_A_REPO: { data: z.object({ code: z.literal('NOT_A_REPO'), path: z.string() }) },
+  WSL_UNSUPPORTED: { data: z.object({ code: z.literal('WSL_UNSUPPORTED'), path: z.string() }) },
+}
+
+export type ResolveRepoError = DeclaredError<typeof resolveRepoErrors>
+
 /** What the per-Window workspace host serves (SPEC §5.2, ADR-0006, ADR-0009). */
 export const workspaceContract = {
   ping: oc.output(z.literal('pong')),
   gitVersion: oc.output(gitVersion).errors(gitVersionErrors),
+  resolveRepo: oc.input(resolveRepoInput).output(resolvedRepo).errors(resolveRepoErrors),
 }
 
 export type WorkspaceClient = Client<typeof workspaceContract>
