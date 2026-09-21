@@ -5,3 +5,5 @@ dist/
 .DS_Store
 test-results/
 playwright-report/
+# Agent worktrees and session files
+.claude/
