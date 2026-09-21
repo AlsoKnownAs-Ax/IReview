@@ -269,7 +269,9 @@ main (one): lifecycle, repo→window registry, MessagePort broker, safeStorage, 
 ### 5.2 IPC
 
 - IPC runs on oRPC ([ADR-0009](./adr/0009-orpc-for-host-ipc.md)).
-- `src/shared/contract/`: one oRPC contract per host, built from zod schemas. Each member is one of:
+- Each module owns its contract slice in `<module>/contract/`, built from zod schemas; `src/shared/contract/<host>.ts`
+  composes the slices its domains export into one contract per host ([ADR-0010](./adr/0010-domain-modules-behind-front-doors.md)).
+  Each member is one of:
   - `rpc`: a procedure (request → response)
   - `stream`: a procedure whose output is an `eventIterator`, a cancellable async iterable
   - `event`: a procedure with no input whose event iterator is fed by an `EventPublisher`
@@ -289,20 +291,26 @@ main (one): lifecycle, repo→window registry, MessagePort broker, safeStorage, 
 
 ### 5.3 Modules
 
-| Module | Runs in | Responsibility |
-|--------|---------|----------------|
-| `git` | workspace-host | Worktrees, status, changed files per Diff mode, blobs, stage/unstage ranges, Integrate, Conflict state. Porcelain v2 / `-z` parsing only; per-Worktree write mutex; `--no-optional-locks`; long-lived `cat-file --batch` |
-| `sessions` | workspace-host | Session list merged from `git worktree list` and stored metadata; create / Archive / Discard; Setup script spec |
-| `fs`, `watch`, `search` | workspace-host | Versioned read/write (echo suppression), file listing via `git ls-files`, @parcel/watcher per open Session with coalescing and rescan on overflow, ripgrep JSON streaming |
-| `pty` | pty-host | Create, attach (snapshot + seq), input, paste, resize, kill tree, shell detection, running-children check; mirror tracks cwd, title and bracketed-paste mode |
-| `terminal` | renderer | `TerminalRenderer` interface + xterm implementation; WebGL context budget (≤ 8 per Window, visible first, DOM fallback); controller for ack and re-attach |
-| `layout` | shared core + renderer | Pure split-tree operations and serialization; stable Item hosting so moves never remount; preset application |
-| `editor` | renderer | Ref-counted Monaco model registry, disk sync + conflict banner, highlighting behind a `Highlighting` interface (`@shikijs/monaco` first), language-features seam |
-| `review` | shared core + workspace-host storage + renderer | Pure `applyLineChanges`, Viewed, Local comments, Feedback formatter and sanitizer |
-| `github` | github-host + shared mapping | `ReviewProvider` interface (Inbox, Pull request, files, Threads, checks, Pending review mutations) with `GitHubProvider` and `FakeProvider`; auth; focus-aware poller; pure Thread → diff-line mapping |
-| `settings` | shared schema; main (global) / workspace-host (repo) | zod schemas exported as JSON Schema; JSONC layered merge; comment-preserving edits; hot reload |
-| `persistence` | hosts | Versioned JSON documents with migrations, debounced atomic writes, scrollback store |
-| `commands`, `keymap` | renderer | Command registry with context conditions; Zed-format keymap resolution with chords |
+Modules are carved by **domain**, not by layer or process, and entered only through a front door
+([ADR-0010](./adr/0010-domain-modules-behind-front-doors.md)). Subfolders name the process a file runs in:
+`contract` (zod schemas, types only), `core` (pure, any process), `main`, `host`, `renderer`, `preload`.
+Operational detail in [`docs/agents/modules.md`](./agents/modules.md).
+
+| Module | Subfolders | Responsibility |
+|--------|------------|----------------|
+| `repo` | contract, main, host, renderer | Repo identity (the real path of the git common directory), Repo → Window registry, opening folders, `git init` flow, git-version precondition |
+| `session` | contract, core, host, renderer | Session list merged from `git worktree list` and stored metadata; create / Archive / Discard; Base ref; Setup script; Integrate; commit, push, pull, fetch; PR session; and the files inside a Worktree — versioned read/write (echo suppression), listing via `git ls-files`, @parcel/watcher per open Session with coalescing and rescan on overflow, ripgrep JSON streaming |
+| `buffer` | core, renderer | Ref-counted Monaco model registry, disk sync + concurrent-edit banner, highlighting behind a `Highlighting` interface (`@shikijs/monaco` first), language-features seam |
+| `layout` | core, renderer | Pure split-tree operations and serialization; stable Item hosting so moves never remount; preset application |
+| `terminal` | contract, host, renderer | Create, attach (snapshot + seq), input, paste, resize, kill tree, shell detection, running-children check; mirror tracks cwd, title and bracketed-paste mode; `TerminalRenderer` interface + xterm implementation; WebGL context budget (≤ 8 per Window, visible first, DOM fallback); Terminal profiles |
+| `review` | contract, core, host, renderer | Diff mode, changed-file list, pure `applyLineChanges`, revert / stage / unstage hunk, Viewed, Local comments, Feedback formatter and sanitizer, Conflict state |
+| `pull-request` | contract, core, host, renderer | `ReviewProvider` interface (Inbox, Pull request, files, Threads, checks, Pending review mutations) with `GitHubProvider` and `FakeProvider`; auth; focus-aware poller; ETag cache; pure Thread → diff-line mapping |
+| `app` | main, preload, host, renderer | Window chrome and lifecycle, MessagePort broker, supervisor, safeStorage, menus, dialogs, `app://` protocol and CSP, utility-process entry points, command registry with context conditions, Zed-format keymap resolution with chords, JSONC layered settings merge with hot reload |
+| `git` | — (leaf, host-only) | The system git CLI behind one interface: invocation policy (`--no-optional-locks`, `LC_ALL=C`), porcelain v2 / `-z` parsing only, per-Worktree write mutex, long-lived `cat-file --batch` ([ADR-0005](./adr/0005-git-cli-in-utility-process.md)) |
+| `shared` | — (leaf) | `rpc` (`serve`/`connect`), `Result`, and one `contract/<host>.ts` composing the contract slices its domains export. Platform-free |
+
+There is no `persistence` module: versioned JSON documents, migrations, debounced atomic writes and the scrollback
+store belong to whichever domain owns the state being written.
 
 **Seam for agents (later):** Terminal launch specs carry `profileId` and `tags`; a future agent profile extends a
 Terminal profile, and an agent host would be another utility process.
@@ -311,19 +319,30 @@ Terminal profile, and an agent host would be another utility process.
 
 ```
 electron.vite.config.ts   electron-builder.yml   .npmrc (node-linker=hoisted)
-src/shared/{contract,rpc,domain/{layout,review,github-mapping,paths}}
-src/main/{index,windows,registry,broker,supervisor,auth,security,menu}
-src/hosts/workspace/{index,git,sessions,fs,watch,search,settings,store}
-src/hosts/pty/{index,shells,mirror,flow,env}
-src/hosts/github/{index,provider,octokit,fake,poller,etag}
-src/preload/index.ts
-src/renderer/src/{app,commands,keymap,workspace,editor,terminal,review,github,sessions,ui,theme}
+src/git/                                        system git CLI — leaf, host-only, no subfolders
+src/shared/{rpc,result,contract/<host>.ts}      platform-free leaves
+src/repo/{contract,main,host,renderer}
+src/session/{contract,core,host,renderer}
+src/buffer/{core,renderer}
+src/layout/{core,renderer}
+src/terminal/{contract,host,renderer}
+src/review/{contract,core,host,renderer}
+src/pull-request/{contract,core,host,renderer}
+src/app/{main,preload,host,renderer}
 tests/{e2e,fixtures/{repo-builder.ts,fake-shell.mjs,github/}}
 scripts/{gen-tokens.ts,record-github.ts,load-harness.mjs}
 ```
 
-Single package (no pnpm workspaces). dependency-cruiser enforces: `shared` imports nothing platform-specific;
-the renderer never imports hosts.
+Single package (no pnpm workspaces). One path alias, `@/`, so a new module costs no config edits. Every subfolder
+listed above has an `index.ts` front door; there is no module-root barrel, because one would re-export host code
+into the renderer's import graph.
+
+dependency-cruiser enforces ([ADR-0010](./adr/0010-domain-modules-behind-front-doors.md)):
+
+- nothing imports below a front door, values or types;
+- `*/renderer/**` imports neither `*/host/**` nor `*/main/**`, and no Node built-ins;
+- `*/core/**` and `*/contract/**` import nothing platform-specific;
+- the module graph stays acyclic.
 
 ## 6. Technical risks and mitigations
 

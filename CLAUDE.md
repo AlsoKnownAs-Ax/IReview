@@ -12,6 +12,10 @@ Uses the five default triage labels: `needs-triage`, `needs-info`, `ready-for-ag
 
 Single-context: one `CONTEXT.md` plus `docs/adr/` at the repo root. See `docs/agents/domain.md`.
 
+### Modules
+
+Modules are carved by domain and entered only through a front door — an `index.ts` per process subfolder. Nothing imports below a front door, values or types. See `docs/agents/modules.md` and `docs/adr/0010-domain-modules-behind-front-doors.md`.
+
 ### UI
 
 When building UI use the `DESIGN.md` file at the repo root.
