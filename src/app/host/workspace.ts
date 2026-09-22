@@ -1,31 +1,8 @@
-import { implement } from '@orpc/server'
-import { detectGitVersion } from '@/git'
-import { resolveRepo } from '@/repo/host'
-import { workspaceContract } from '@/shared/contract/workspace'
-import { declaredError, serve } from '@/shared/rpc/rpc'
+import type { workspaceContract } from '@/shared/contract/workspace'
+import { serve } from '@/shared/rpc/rpc'
+import { workspaceRouter } from './workspace-router'
 
-const os = implement(workspaceContract)
-const router = os.router({
-  ping: os.ping.handler(() => 'pong' as const),
-  gitVersion: os.gitVersion.handler(async ({ errors }) => {
-    const { data: version, error } = await detectGitVersion()
-
-    if (error) {
-      throw declaredError(errors, error)
-    }
-
-    return version
-  }),
-  resolveRepo: os.resolveRepo.handler(async ({ input, errors }) => {
-    const { data: repo, error } = await resolveRepo(input)
-
-    if (error) {
-      throw declaredError(errors, error)
-    }
-
-    return repo
-  }),
-})
+const router = workspaceRouter()
 
 // Main hands over one port per renderer page load (SPEC §5.1–5.2); oRPC stops serving a port once it closes.
 process.parentPort.on('message', ({ ports: [port] }) => {
