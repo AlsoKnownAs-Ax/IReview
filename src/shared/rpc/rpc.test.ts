@@ -61,7 +61,9 @@ async function expectCancelled(host: EndlessLogHost): Promise<void> {
 }
 
 async function collect<T>(items: AsyncIterable<T>, into: T[]): Promise<void> {
-  for await (const item of items) into.push(item)
+  for await (const item of items) {
+    into.push(item)
+  }
 }
 
 function sleep(ms: number): Promise<void> {
@@ -203,7 +205,12 @@ test('breaking out of a stream cancels it on the host, which yields nothing more
 
   const { data: log } = await client.log({ count: 0 })
   assert(log)
-  for await (const item of log) if (item === 'commit 1') break
+  for await (const item of log) {
+    if (item === 'commit 1') {
+      break
+    }
+  }
+
   await expectCancelled(host)
 })
 
@@ -256,7 +263,9 @@ test('event subscribers receive published payloads, and the host stops deliverin
   const consumed = (async (): Promise<void> => {
     for await (const { path } of changes) {
       paths.push(path)
-      if (paths.length === 2) break
+      if (paths.length === 2) {
+        break
+      }
     }
   })()
   await vi.waitFor(() => expect(publisher.size).toBe(1))

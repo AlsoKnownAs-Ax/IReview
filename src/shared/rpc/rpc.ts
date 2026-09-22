@@ -43,7 +43,10 @@ export function connect<C extends AnyContractRouter>(port: Port): Client<C> {
     port,
     interceptors: [
       ({ next }): Promise<unknown> => {
-        if (state.isClosed) return portClosed()
+        if (state.isClosed) {
+          return portClosed()
+        }
+
         return next()
       },
     ],
@@ -76,7 +79,10 @@ function portClosed(): Promise<never> {
 
 /** Declared errors are answers; anything else is a bug or a misbehaving peer, worth a line in the host's log. */
 function logUnexpected(error: unknown): void {
-  if (isDefinedError(error)) return
+  if (isDefinedError(error)) {
+    return
+  }
+
   console.error('rpc: a call failed', error)
 }
 
@@ -89,11 +95,20 @@ function decodableRequests(port: Port): MessagePortMainLike {
   let checked = Promise.resolve()
   return {
     on: (event, callback) => {
-      if (event === 'close') onMessagePortClose(port, () => callback())
-      if (event !== 'message') return
+      if (event === 'close') {
+        onMessagePortClose(port, () => callback())
+      }
+
+      if (event !== 'message') {
+        return
+      }
+
       onMessagePortMessage(port, (data) => {
         checked = checked.then(async () => {
-          if (await isDecodable(data)) return callback({ data })
+          if (await isDecodable(data)) {
+            return callback({ data })
+          }
+
           console.error('rpc: dropped a message that is not an oRPC request')
         })
       })
@@ -113,8 +128,10 @@ async function isDecodable(message: unknown) {
 
 /** Decodes `message` the way oRPC's MessagePort handler will: plain objects arrive already deserialized. */
 async function decodeLikeHandler(message: unknown): Promise<unknown> {
-  if (isObject(message))
+  if (isObject(message)) {
     return deserializeRequestMessage(message as unknown as Parameters<typeof deserializeRequestMessage>[0])
+  }
+
   return decodeRequestMessage(message as EncodedMessage)
 }
 
@@ -127,7 +144,10 @@ function unawaitable<T extends object>(client: T): T {
     new Proxy(client, {
       get(target, key, receiver): unknown {
         const value: unknown = Reflect.get(target, key, receiver)
-        if (typeof key !== 'string' || key === 'then' || typeof value !== 'function') return value
+        if (typeof key !== 'string' || key === 'then' || typeof value !== 'function') {
+          return value
+        }
+
         return unawaitable(value)
       },
     }),

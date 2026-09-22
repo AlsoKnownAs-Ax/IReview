@@ -21,8 +21,13 @@ const GIT_ERROR_TEXT: { [C in GitErrorCode]: (error: GitErrorByCode[C]) => strin
 }
 
 function hostStatusText({ isConnected, errorCode }: HostConnection) {
-  if (errorCode) return `Workspace host unavailable (${errorCode})`
-  if (isConnected) return 'Workspace host connected'
+  if (errorCode) {
+    return `Workspace host unavailable (${errorCode})`
+  }
+
+  if (isConnected) {
+    return 'Workspace host connected'
+  }
 
   return 'Connecting to workspace host…'
 }
@@ -41,9 +46,17 @@ function gitErrorText<C extends GitErrorCode>(error: GitErrorByCode[C] & { code:
 }
 
 function gitStatusText({ version, error, errorCode }: GitCheck): string {
-  if (errorCode) return `Could not check git (${errorCode})`
-  if (error) return gitErrorText(error)
-  if (version) return `git ${formatGitVersion(version)}`
+  if (errorCode) {
+    return `Could not check git (${errorCode})`
+  }
+
+  if (error) {
+    return gitErrorText(error)
+  }
+
+  if (version) {
+    return `git ${formatGitVersion(version)}`
+  }
 
   return 'Checking git…'
 }
@@ -56,15 +69,28 @@ export function App({ workspaceHost }: { workspaceHost: Promise<WorkspaceClient>
     let isMounted = true
     void workspaceHost.then((host) => {
       void host.ping().then(({ error }) => {
-        if (!isMounted) return
-        if (error) return setConnection({ isConnected: false, errorCode: toORPCError(error).code })
+        if (!isMounted) {
+          return
+        }
+
+        if (error) {
+          return setConnection({ isConnected: false, errorCode: toORPCError(error).code })
+        }
 
         setConnection({ isConnected: true })
       })
       void host.gitVersion().then(({ data: version, error }) => {
-        if (!isMounted) return
-        if (isDefinedError(error)) return setGit({ error: error.data })
-        if (error) return setGit({ errorCode: toORPCError(error).code })
+        if (!isMounted) {
+          return
+        }
+
+        if (isDefinedError(error)) {
+          return setGit({ error: error.data })
+        }
+
+        if (error) {
+          return setGit({ errorCode: toORPCError(error).code })
+        }
 
         setGit({ version })
       })

@@ -10,7 +10,9 @@ import { connect } from '@/shared/rpc/rpc'
 export function connectWorkspaceHost(): Promise<WorkspaceClient> {
   return new Promise((resolve) => {
     window.addEventListener('message', function onPort({ source, origin, data, ports: [port] }) {
-      if (source !== window || origin !== location.origin || data !== WORKSPACE_HOST_PORT || !port) return
+      if (source !== window || origin !== location.origin || data !== WORKSPACE_HOST_PORT || !port) {
+        return
+      }
 
       window.removeEventListener('message', onPort)
       resolve(connect<typeof workspaceContract>(port))

@@ -52,14 +52,20 @@ export type TokensError =
 /** Turns the DESIGN.md front matter into a Tailwind v4 `@theme` stylesheet and a TS module of the same tokens. */
 export function generateTokens(designMd: string): Result<GeneratedTokens, TokensError> {
   const frontMatter = FRONT_MATTER.exec(designMd)?.[1]
-  if (frontMatter === undefined) return { data: null, error: { code: 'MISSING_FRONT_MATTER' } }
+  if (frontMatter === undefined) {
+    return { data: null, error: { code: 'MISSING_FRONT_MATTER' } }
+  }
 
   const document = parseDocument(frontMatter)
   const [yamlError] = document.errors
-  if (yamlError) return { data: null, error: { code: 'INVALID_YAML', message: yamlError.message } }
+  if (yamlError) {
+    return { data: null, error: { code: 'INVALID_YAML', message: yamlError.message } }
+  }
 
   const { success, data: tokens, error } = TokensSchema.safeParse(document.toJS())
-  if (!success) return { data: null, error: { code: 'INVALID_TOKENS', issues: error.issues } }
+  if (!success) {
+    return { data: null, error: { code: 'INVALID_TOKENS', issues: error.issues } }
+  }
 
   const theme = themeVariables(tokens)
     .map((variable) => `  ${variable};\n`)

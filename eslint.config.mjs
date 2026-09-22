@@ -37,4 +37,6 @@ export default defineConfig(
     languageOptions: { globals: globals.browser },
   },
   prettier,
+  // After prettier, which switches curly off.
+  { rules: { curly: ['error', 'all'] } },
 )

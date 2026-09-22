@@ -18,7 +18,10 @@ export function serveRendererOverAppProtocol(root: string): void {
 
 async function serve(url: string, root: string): Promise<Response> {
   const file = resolveAppUrl(url, root)
-  if (!file) return notFound()
+  if (!file) {
+    return notFound()
+  }
+
   try {
     return await net.fetch(pathToFileURL(file).toString())
   } catch {

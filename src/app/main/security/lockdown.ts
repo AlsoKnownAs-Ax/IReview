@@ -14,13 +14,18 @@ function lockDown(contents: WebContents): void {
   // Covers the main frame and subframes, but not what the main process loads with loadURL. Reloading the current
   // document (such as Vite's full reload in dev) is not navigating away, so it is allowed.
   contents.on('will-frame-navigate', (event) => {
-    if (event.url !== event.frame?.url) event.preventDefault()
+    if (event.url !== event.frame?.url) {
+      event.preventDefault()
+    }
   })
   contents.on('will-redirect', (event) => event.preventDefault())
   contents.on('will-attach-webview', (event) => event.preventDefault())
 
   contents.setWindowOpenHandler(({ url }) => {
-    if (isAllowedExternalUrl(url)) void shell.openExternal(url)
+    if (isAllowedExternalUrl(url)) {
+      void shell.openExternal(url)
+    }
+
     return { action: 'deny' }
   })
 }
