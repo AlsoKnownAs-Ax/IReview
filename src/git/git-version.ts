@@ -1,12 +1,14 @@
 import { MINIMUM_GIT_VERSION, type GitVersion, type GitVersionError } from '@/shared/contract/git'
 import type { Result } from '@/shared/result'
-import { runGit } from './run-git'
+import { runGit, type GitRunOptions } from './run-git'
 
 // Plain `git version 2.45.1`, Windows `2.45.1.windows.1`, Apple `2.39.3 (Apple Git-146)`.
 const VERSION_OUTPUT = /^git version (\d+)\.(\d+)\.(\d+)\b/
 
-export async function detectGitVersion(): Promise<Result<GitVersion, GitVersionError>> {
-  const { data: stdout, error } = await runGit(['--version'])
+export async function detectGitVersion({ executable }: Pick<GitRunOptions, 'executable'> = {}): Promise<
+  Result<GitVersion, GitVersionError>
+> {
+  const { data: stdout, error } = await runGit(['--version'], { executable })
 
   if (error) {
     return { data: null, error }

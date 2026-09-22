@@ -1,9 +1,10 @@
 import { isDefinedError } from '@orpc/client'
 import { eventIterator, oc } from '@orpc/contract'
 import { EventPublisher, implement, type Router } from '@orpc/server'
-import { assert, beforeEach, expect, expectTypeOf, onTestFinished, test, vi } from 'vitest'
+import { assert, beforeEach, expect, expectTypeOf, test, vi } from 'vitest'
 import { z } from 'zod'
-import { connect, declaredError, serve, type Client } from './rpc'
+import { openChannel, type Channel } from '@tests/fixtures/rpc-channel'
+import { declaredError, serve, type Client } from './rpc'
 
 const contract = {
   checkout: oc
@@ -23,24 +24,18 @@ const contract = {
 const os = implement(contract)
 const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
 
-type TestPort = InstanceType<typeof MessageChannel>['port1']
 type HostRouter = Router<typeof contract, Record<never, never>>
-type Channel = { client: Client<typeof contract>; clientPort: TestPort; hostPort: TestPort }
 type EndlessLogHost = { cancelled: boolean; yielded: number }
 
 beforeEach(() => logged.mockClear())
 
-/** Serves `router` on one end of a fresh MessageChannel and connects a client to the other. */
-function openChannel(router: Partial<HostRouter>): Channel {
-  const { port1: clientPort, port2: hostPort } = new MessageChannel()
-  onTestFinished(() => clientPort.close())
+function openChannelTo(router: Partial<HostRouter>): Channel<typeof contract> {
   // Each test implements only what it calls; anything else answers NOT_FOUND.
-  serve<typeof contract>(router as HostRouter, hostPort)
-  return { client: connect<typeof contract>(clientPort), clientPort, hostPort }
+  return openChannel<typeof contract>(router as HostRouter)
 }
 
 function connectTo(router: Partial<HostRouter>): Client<typeof contract> {
-  return openChannel(router).client
+  return openChannelTo(router).client
 }
 
 /** Serves a `log` that yields until the host cancels it. */
@@ -98,7 +93,9 @@ test('serve takes only a router for the whole contract it names', () => {
 })
 
 test('a message that is not an oRPC request is dropped and logged, and the host keeps answering', async () => {
-  const { client, clientPort } = openChannel({ checkout: os.checkout.handler(({ input }) => ({ head: input.branch })) })
+  const { client, clientPort } = openChannelTo({
+    checkout: os.checkout.handler(({ input }) => ({ head: input.branch })),
+  })
   const multipart = { i: 1, p: { u: '/checkout', h: { 'content-type': 'multipart/form-data' } } }
   ;['not json', { i: 0 }, JSON.stringify(multipart)].forEach((message) => clientPort.postMessage(message))
 
@@ -108,7 +105,7 @@ test('a message that is not an oRPC request is dropped and logged, and the host 
 })
 
 test('once the port closes, a call in flight and every later call settle with an error instead of hanging', async () => {
-  const { client, hostPort } = openChannel({ checkout: os.checkout.handler(() => new Promise<never>(() => {})) })
+  const { client, hostPort } = openChannelTo({ checkout: os.checkout.handler(() => new Promise<never>(() => {})) })
   const inFlight = client.checkout({ branch: 'main' })
   await sleep(10)
 
