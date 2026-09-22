@@ -1,27 +1,10 @@
 import { realpath, stat } from 'node:fs/promises'
-import { runGit } from '@/git'
+import { readRepoPaths } from '@/git'
 import type { ResolvedRepo, ResolveRepoError, ResolveRepoInput } from '@/repo/contract'
-import type { GitRunError } from '@/shared/contract/git'
 import type { Result } from '@/shared/result'
 
 // `\\wsl$\<distro>` and `\\wsl.localhost\<distro>`, optionally as `\\?\UNC\…`, either slash style, any case (SPEC §3.1).
 const WSL_PATH = /^[\\/]{2}([?.][\\/]UNC[\\/])?wsl(\$|\.localhost)([\\/]|$)/i
-
-// Git ≥ 2.31 prints each requested path absolute, one per line, in argument order.
-const REV_PARSE_ARGS = [
-  '--no-optional-locks',
-  'rev-parse',
-  '--path-format=absolute',
-  '--git-common-dir',
-  '--show-toplevel',
-]
-
-// An exception to ADR-0005's machine-readable output: git has no coded "not a repository" failure. It exits 128 for
-// every fatal error (dubious ownership, corrupt repo, …), so only the message tells "no repo here" apart. `LC_ALL=C`
-// keeps that message untranslated.
-const C_LOCALE_ENV = { LC_ALL: 'C' }
-const NOT_A_REPO_EXIT_CODE = 128
-const NOT_A_REPO_MESSAGE = 'not a git repository'
 
 export async function resolveRepo({ path }: ResolveRepoInput): Promise<Result<ResolvedRepo, ResolveRepoError>> {
   if (isWslPath(path)) {
@@ -33,20 +16,16 @@ export async function resolveRepo({ path }: ResolveRepoInput): Promise<Result<Re
     return { data: null, error: { code: 'PATH_NOT_FOUND', path } }
   }
 
-  const { data: stdout, error } = await runGit(REV_PARSE_ARGS, { cwd: path, env: C_LOCALE_ENV })
-
-  if (error && isNotARepo(error)) {
-    return { data: null, error: { code: 'NOT_A_REPO', path } }
-  }
+  const { data: paths, error } = await readRepoPaths({ cwd: path })
 
   if (error) {
     return { data: null, error }
   }
 
   // Real paths resolve symlinks and Windows 8.3 short names, so the same Repo always compares equal.
-  const [identity, checkoutRoot] = await Promise.all(stdout.split('\n', 2).map(realPathOf))
+  const [identity, checkoutRoot] = await Promise.all([paths.commonDir, paths.checkoutRoot].map(realPathOf))
 
-  // Absent only if the folder vanished while git ran.
+  // Absent if the folder vanished while git ran, or git printed no path.
   if (!identity || !checkoutRoot) {
     return { data: null, error: { code: 'PATH_NOT_FOUND', path } }
   }
@@ -65,19 +44,10 @@ function isFolder(path: string): Promise<boolean> {
   )
 }
 
-/** `realpath('')` resolves to the process's own cwd, so an empty path is absent instead. */
-async function realPathOf(path: string): Promise<string | undefined> {
+async function realPathOf(path: string | undefined): Promise<string | undefined> {
   if (!path) {
     return undefined
   }
 
   return realpath(path).catch((): undefined => undefined)
-}
-
-function isNotARepo(error: GitRunError): boolean {
-  if (error.code !== 'GIT_FAILED') {
-    return false
-  }
-
-  return error.exitCode === NOT_A_REPO_EXIT_CODE && error.stderr.includes(NOT_A_REPO_MESSAGE)
 }

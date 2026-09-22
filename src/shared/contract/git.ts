@@ -16,6 +16,14 @@ export const gitRunErrors = {
 
 export type GitRunError = DeclaredError<typeof gitRunErrors>
 
+/** How asking git which repo holds a folder can fail. */
+export const repoPathsErrors = {
+  ...gitRunErrors,
+  NOT_A_REPO: { data: z.object({ code: z.literal('NOT_A_REPO'), path: z.string() }) },
+}
+
+export type RepoPathsError = DeclaredError<typeof repoPathsErrors>
+
 export const gitVersion = z.object({ major: z.number().int(), minor: z.number().int(), patch: z.number().int() })
 
 export type GitVersion = z.infer<typeof gitVersion>
