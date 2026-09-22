@@ -19,10 +19,11 @@ export function createRepoRegistry({ createWindow }: RepoRegistryOptions): RepoR
 
   return {
     open(repo): void {
-      const open = windows.get(repo.identity)
+      const existing = windows.get(repo.identity)
 
-      if (open) {
-        return open.focus()
+      if (existing) {
+        existing.focus()
+        return
       }
 
       const window = createWindow(repo)
