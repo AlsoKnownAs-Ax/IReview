@@ -29,7 +29,7 @@ export function runGit(
   })
 }
 
-function toGitRunError(error: ExecFileException, stderr: string): GitRunError {
+export function toGitRunError(error: ExecFileException, stderr: string): GitRunError {
   // A process that never started fails in the `spawn` syscall (ENOENT, EACCES); anything later is git's own failure.
   if (error.syscall?.startsWith('spawn')) {
     return { code: 'GIT_MISSING' }

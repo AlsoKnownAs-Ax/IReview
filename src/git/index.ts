@@ -1,2 +1,2 @@
 export { detectGitVersion } from './git-version'
-export { runGit } from './run-git'
+export { readRepoPaths, type NotARepoError, type RepoPaths } from './repo-paths'

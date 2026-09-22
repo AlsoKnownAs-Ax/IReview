@@ -1,7 +1,7 @@
 import { mkdir, realpath, symlink } from 'node:fs/promises'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { runGit } from '@/git'
+import { readRepoPaths } from '@/git'
 import { buildRepo, type TempRepo } from '@tests/fixtures/repo-builder'
 import { isWslPath, resolveRepo } from './resolve-repo'
 
@@ -80,10 +80,10 @@ describe('resolveRepo', () => {
   })
 
   it('refuses a WSL path without running git', async () => {
-    vi.mocked(runGit).mockClear()
+    vi.mocked(readRepoPaths).mockClear()
     const path = '\\\\wsl.localhost\\Ubuntu\\home\\dev\\repo'
 
     expect(await resolveRepo({ path })).toEqual({ data: null, error: { code: 'WSL_UNSUPPORTED', path } })
-    expect(runGit).not.toHaveBeenCalled()
+    expect(readRepoPaths).not.toHaveBeenCalled()
   })
 })
