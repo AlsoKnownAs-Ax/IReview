@@ -1,6 +1,9 @@
 import { dialog, type BrowserWindow } from 'electron'
 
-/** The native folder picker, modal to `window`. Looked up on `dialog` at call time, so a test can stub it. */
+/**
+ * The native folder picker, modal to `window`. `showOpenDialog` is read off `dialog` at call time, so Playwright can
+ * stub it from `app.evaluate` without a hook shipped in main.
+ */
 export async function pickFolder(window: BrowserWindow): Promise<string | null> {
   const {
     canceled,

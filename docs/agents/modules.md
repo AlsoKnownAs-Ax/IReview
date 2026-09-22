@@ -104,5 +104,5 @@ owns it, and making one of them own it would turn that module into a pass-throug
    as avoided.
 2. Create only the subfolders you need, each with an `index.ts`.
 3. If it crosses a process seam, put its zod schemas in `contract/` and add the slice to the right
-   `src/shared/contract/<host>.ts`.
+   `src/shared/contract/<process>.ts`.
 4. Keep the front door small. A module that exports everything it contains is a folder, not a module.

@@ -269,8 +269,9 @@ main (one): lifecycle, repo→window registry, MessagePort broker, safeStorage, 
 ### 5.2 IPC
 
 - IPC runs on oRPC ([ADR-0009](./adr/0009-orpc-for-host-ipc.md)).
-- Each module owns its contract slice in `<module>/contract/`, built from zod schemas; `src/shared/contract/<host>.ts`
-  composes the slices its domains export into one contract per host ([ADR-0010](./adr/0010-domain-modules-behind-front-doors.md)).
+- Each module owns its contract slice in `<module>/contract/`, built from zod schemas; `src/shared/contract/<process>.ts`
+  composes the slices its domains export into one contract per serving process: each utility host, and `main.ts` for
+  what main serves a Window ([ADR-0010](./adr/0010-domain-modules-behind-front-doors.md)).
   Each member is one of:
   - `rpc`: a procedure (request → response)
   - `stream`: a procedure whose output is an `eventIterator`, a cancellable async iterable
@@ -307,7 +308,7 @@ Operational detail in [`docs/agents/modules.md`](./agents/modules.md).
 | `pull-request` | contract, core, host, renderer | `ReviewProvider` interface (Inbox, Pull request, files, Threads, checks, Pending review mutations) with `GitHubProvider` and `FakeProvider`; auth; focus-aware poller; ETag cache; pure Thread → diff-line mapping |
 | `app` | main, preload, host, renderer | Window chrome and lifecycle, MessagePort broker, supervisor, safeStorage, menus, dialogs, `app://` protocol and CSP, utility-process entry points, command registry with context conditions, Zed-format keymap resolution with chords, JSONC layered settings merge with hot reload |
 | `git` | — (leaf, host-only) | The system git CLI behind one interface: invocation policy (`--no-optional-locks`, `LC_ALL=C`), porcelain v2 / `-z` parsing only, per-Worktree write mutex, long-lived `cat-file --batch` ([ADR-0005](./adr/0005-git-cli-in-utility-process.md)) |
-| `shared` | — (leaf) | `rpc` (`serve`/`connect`), `Result`, and one `contract/<host>.ts` composing the contract slices its domains export. Platform-free |
+| `shared` | — (leaf) | `rpc` (`serve`/`connect`), `Result`, and one `contract/<process>.ts` per serving process (each utility host, and main) composing the contract slices its domains export. Platform-free |
 
 There is no `persistence` module: versioned JSON documents, migrations, debounced atomic writes and the scrollback
 store belong to whichever domain owns the state being written.
@@ -320,7 +321,7 @@ Terminal profile, and an agent host would be another utility process.
 ```
 electron.vite.config.ts   electron-builder.yml   .npmrc (node-linker=hoisted)
 src/git/                                        system git CLI — leaf, host-only, no subfolders
-src/shared/{rpc,result,contract/<host>.ts}      platform-free leaves
+src/shared/{rpc,result,contract/<process>.ts}   platform-free leaves
 src/repo/{contract,main,host,renderer}
 src/session/{contract,core,host,renderer}
 src/buffer/{core,renderer}
