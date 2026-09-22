@@ -1,11 +1,7 @@
 import { isDefinedError, toORPCError } from '@orpc/client'
 import { useEffect, useState } from 'react'
-import {
-  MINIMUM_GIT_VERSION,
-  type GitVersion,
-  type GitVersionError,
-  type WorkspaceClient,
-} from '@shared/contract/workspace'
+import { MINIMUM_GIT_VERSION, type GitVersion, type GitVersionError } from '@/shared/contract/git'
+import type { WorkspaceClient } from '@/shared/contract/workspace'
 import { WelcomeWindow } from './WelcomeWindow'
 
 type HostConnection = { isConnected: boolean; errorCode?: string }

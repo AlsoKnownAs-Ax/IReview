@@ -1,8 +1,8 @@
 import { implement } from '@orpc/server'
-import { workspaceContract } from '@shared/contract/workspace'
-import { declaredError, serve } from '@shared/rpc/rpc'
-import { detectGitVersion } from './git/git-version'
-import { resolveRepo } from './git/resolve-repo'
+import { detectGitVersion } from '@/git'
+import { resolveRepo } from '@/repo/host'
+import { workspaceContract } from '@/shared/contract/workspace'
+import { declaredError, serve } from '@/shared/rpc/rpc'
 
 const os = implement(workspaceContract)
 const router = os.router({

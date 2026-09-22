@@ -1,7 +1,8 @@
 import { realpath, stat } from 'node:fs/promises'
-import type { GitRunError, ResolvedRepo, ResolveRepoError, ResolveRepoInput } from '@shared/contract/workspace'
-import type { Result } from '@shared/result'
-import { runGit } from './run-git'
+import { runGit } from '@/git'
+import type { ResolvedRepo, ResolveRepoError, ResolveRepoInput } from '@/repo/contract'
+import type { GitRunError } from '@/shared/contract/git'
+import type { Result } from '@/shared/result'
 
 // `\\wsl$\<distro>` and `\\wsl.localhost\<distro>`, optionally as `\\?\UNC\…`, either slash style, any case (SPEC §3.1).
 const WSL_PATH = /^[\\/]{2}([?.][\\/]UNC[\\/])?wsl(\$|\.localhost)([\\/]|$)/i

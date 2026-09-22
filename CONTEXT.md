@@ -15,6 +15,11 @@ _Avoid_: Project, folder, workspace
 One app window, bound to one Repo for its whole life.
 _Avoid_: Instance, workspace
 
+**App**:
+The window chrome and app-wide wiring every Window shares — commands, keymap, settings, security and process
+startup — owned by no single domain.
+_Avoid_: Shell, platform, core
+
 **Session**:
 A unit of parallel work inside a Repo: one Worktree on one branch, compared against a Base ref, with its own Terminals and Layout.
 _Avoid_: Task, workspace, agent session, tab
@@ -72,6 +77,13 @@ _Avoid_: Panel, sidebar, drawer
 **Layout preset**:
 A named, reusable Layout recipe, such as "agent + dev server + tests".
 _Avoid_: Template, profile
+
+### Editing
+
+**Buffer**:
+The in-memory content of a file opened for editing, holding its unsaved edits and its own disk-sync state. One
+Buffer can be shown by several Items.
+_Avoid_: Editor, model, document
 
 ### Terminals
 

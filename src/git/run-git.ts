@@ -1,6 +1,6 @@
 import { execFile, type ExecFileException } from 'node:child_process'
-import type { GitRunError } from '@shared/contract/workspace'
-import type { Result } from '@shared/result'
+import type { GitRunError } from '@/shared/contract/git'
+import type { Result } from '@/shared/result'
 
 export type GitRunOptions = {
   /** Must exist: a missing `cwd` fails to spawn just like a missing git, so it also reports `GIT_MISSING`. */

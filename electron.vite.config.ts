@@ -3,20 +3,25 @@ import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'electron-vite'
 
-const shared = { '@shared': resolve('src/shared') }
+const RENDERER_ROOT = 'src/app/renderer'
+
+const alias = { '@': resolve('src') }
 
 export default defineConfig({
   main: {
-    resolve: { alias: { ...shared, '@main': resolve('src/main'), '@hosts': resolve('src/hosts') } },
+    resolve: { alias },
     build: {
-      rollupOptions: { input: { index: 'src/main/index.ts', 'workspace-host': 'src/hosts/workspace/index.ts' } },
+      rollupOptions: { input: { index: 'src/app/main/index.ts', 'workspace-host': 'src/app/host/workspace.ts' } },
     },
   },
   preload: {
-    resolve: { alias: { ...shared, '@preload': resolve('src/preload') } },
+    resolve: { alias },
+    build: { rollupOptions: { input: { index: 'src/app/preload/index.ts' } } },
   },
   renderer: {
-    resolve: { alias: { ...shared, '@renderer': resolve('src/renderer/src') } },
+    root: RENDERER_ROOT,
+    resolve: { alias },
+    build: { rollupOptions: { input: { index: resolve(RENDERER_ROOT, 'index.html') } } },
     plugins: [react(), tailwindcss()],
   },
 })

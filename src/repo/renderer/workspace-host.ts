@@ -1,6 +1,6 @@
-import { WORKSPACE_HOST_PORT } from '@shared/contract/ports'
-import type { workspaceContract, WorkspaceClient } from '@shared/contract/workspace'
-import { connect } from '@shared/rpc/rpc'
+import { WORKSPACE_HOST_PORT } from '@/shared/contract/ports'
+import type { workspaceContract, WorkspaceClient } from '@/shared/contract/workspace'
+import { connect } from '@/shared/rpc/rpc'
 
 /**
  * Resolves with a client for this Window's workspace host once preload forwards its port (SPEC §5.2). Call it before
