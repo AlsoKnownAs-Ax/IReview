@@ -85,8 +85,9 @@ the stricter rule from ADR-0006 still holds: hosts never call each other, and th
 
 Two things are imported by everyone and own no domain:
 
-- **`src/shared/`** — `rpc` (`serve`/`connect`), `result`, and one `contract/<host>.ts` per utility process that
-  composes the contract slices its domains export. Alongside them sit the few wire shapes no domain owns, such as
+- **`src/shared/`** — `rpc` (`serve`/`connect`), `result`, and one `contract/<process>.ts` per process that serves
+  a contract (each utility host, and `main.ts` for what main serves a Window) that composes the contract slices its
+  domains export. Alongside them sit the few wire shapes no domain owns, such as
   `contract/ports.ts` and `contract/git.ts`, whose schemas describe the git CLI that `repo`, `session` and `review`
   all shell out to. Platform-free: no Node built-ins, no Electron.
 - **`src/git/`** — the system git CLI behind one interface: invocation policy (`--no-optional-locks`, `LC_ALL=C`),
