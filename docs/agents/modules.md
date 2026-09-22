@@ -54,7 +54,8 @@ A module creates only the ones it needs.
 Each subfolder has its own front door. **There is no module-root `index.ts`**: a single barrel would re-export
 host code into the renderer's import graph, which is what [ADR-0006](../adr/0006-per-window-utility-hosts.md)
 exists to prevent. `src/app/host/` is the one subfolder without a front door: a utility process is started by
-path rather than imported, so it holds one entry point per host (`workspace.ts`, later `pty.ts`), each serving the router beside it (`workspace-router.ts`) so tests can serve it without starting the process.
+path rather than imported, so it holds one entry point per host (`workspace.ts`, later `pty.ts`), each serving the
+router beside it (`workspace-router.ts`) so tests can serve that router without starting the process.
 
 ```
 review/
