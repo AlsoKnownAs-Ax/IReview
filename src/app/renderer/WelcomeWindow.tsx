@@ -1,10 +1,9 @@
 import { useId, useState, type ReactElement } from 'react'
-import { openFolderErrorText, type OpenFolderError, type OpenFolderOutcome } from '@/repo/renderer'
-import type { Result } from '@/shared/result'
+import { openFolderErrorText, type OpenFolder, type OpenFolderError } from '@/repo/renderer'
 
 export type WelcomeWindowProps = {
   /** Runs Open Folder; resolves once a Window opened, the picker was cancelled, or with why nothing opened. */
-  openFolder: () => Promise<Result<OpenFolderOutcome, OpenFolderError>>
+  openFolder: OpenFolder
 }
 
 type OpenFolderState = { isOpening: boolean; error?: OpenFolderError }
@@ -33,7 +32,7 @@ export function WelcomeWindow({ openFolder }: WelcomeWindowProps): ReactElement 
           type="button"
           disabled={opening.isOpening}
           onClick={() => void onOpenFolder()}
-          className="rounded-md bg-primary px-sm py-xs text-button text-on-primary hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-focus/50 active:bg-primary-focus disabled:opacity-50"
+          className="rounded-md bg-primary px-sm py-xs text-button text-on-primary hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-focus/50 active:bg-primary-focus disabled:bg-surface-3 disabled:text-ink-tertiary"
         >
           Open Folder
         </button>

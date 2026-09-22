@@ -1,7 +1,7 @@
 import { isDefinedError, toORPCError } from '@orpc/client'
 import { useEffect, useState, type ReactElement } from 'react'
 import type { ResolvedRepo } from '@/repo/contract'
-import { openFolder } from '@/repo/renderer'
+import { openFolder, type OpenFolder } from '@/repo/renderer'
 import { MINIMUM_GIT_VERSION, type GitVersion, type GitVersionError } from '@/shared/contract/git'
 import type { MainClient } from '@/shared/contract/main'
 import type { WorkspaceClient } from '@/shared/contract/workspace'
@@ -72,10 +72,14 @@ function gitStatusText({ version, error, errorCode }: GitCheck): string {
 
 function windowFor(
   { isKnown, repo, errorCode }: WindowBinding,
-  openFolderFromWelcome: () => ReturnType<typeof openFolder>,
+  openFolderFromWelcome: OpenFolder,
 ): ReactElement | null {
   if (errorCode) {
-    return <p role="alert">Could not tell which Repo this Window shows ({errorCode})</p>
+    return (
+      <p role="alert" className="px-md py-lg text-body-sm text-error">
+        Could not tell which Repo this Window shows ({errorCode})
+      </p>
+    )
   }
 
   if (!isKnown) {
@@ -149,7 +153,7 @@ export function App({ main, workspaceHost }: AppProps) {
     }
   }, [workspaceHost])
 
-  async function openFolderFromWelcome(): ReturnType<typeof openFolder> {
+  const openFolderFromWelcome: OpenFolder = async () => {
     const [mainClient, hostClient] = await Promise.all([main, workspaceHost])
     return openFolder({ main: mainClient, workspaceHost: hostClient })
   }

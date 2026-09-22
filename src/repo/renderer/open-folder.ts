@@ -13,6 +13,9 @@ type OpenFolderCall = 'pickFolder' | 'resolveRepo' | 'openRepo'
 /** What resolving the folder declares, or a call to main or the host failing outright, such as on a closed port. */
 export type OpenFolderError = ResolveRepoError | { code: 'CALL_FAILED'; call: OpenFolderCall; errorCode: string }
 
+/** Open Folder as a Window runs it, with its clients already bound. */
+export type OpenFolder = () => Promise<Result<OpenFolderOutcome, OpenFolderError>>
+
 /**
  * Open Folder (SPEC §3.1): main shows the picker, this Window's host resolves the folder's Repo, and main opens its
  * Window or focuses the one already open. Nothing opens on an error, so the Welcome Window can explain it.

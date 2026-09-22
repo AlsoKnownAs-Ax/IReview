@@ -11,10 +11,15 @@ const repo: ResolvedRepo = { identity: '/repo/.git', checkoutRoot: '/repo' }
 type MainProcedures = ContractRouterClient<typeof mainContract>
 type WorkspaceProcedures = ContractRouterClient<typeof workspaceContract>
 
+type FakeClients = OpenFolderClients & {
+  openRepo: MainProcedures['openRepo']
+  resolveRepo: WorkspaceProcedures['resolveRepo']
+}
+
 function fakeClients(
   main: Partial<MainProcedures> = {},
   workspaceHost: Partial<WorkspaceProcedures> = {},
-): OpenFolderClients & { openRepo: MainProcedures['openRepo']; resolveRepo: WorkspaceProcedures['resolveRepo'] } {
+): FakeClients {
   const openRepo = vi.fn<MainProcedures['openRepo']>(async () => {})
   const resolveRepo = vi.fn<WorkspaceProcedures['resolveRepo']>(async () => repo)
   return {

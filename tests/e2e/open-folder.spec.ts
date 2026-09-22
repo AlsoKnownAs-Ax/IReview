@@ -7,9 +7,11 @@ import { buildRepo, type TempRepo } from '@tests/fixtures/repo-builder'
 
 let launched: LaunchedApp
 let repo: TempRepo
+let ceilingBefore: string | undefined
 
 test.beforeEach(async () => {
   // Keeps git from finding a repo above the temp dir, such as a dotfiles repo in the home folder.
+  ceilingBefore = process.env['GIT_CEILING_DIRECTORIES']
   process.env['GIT_CEILING_DIRECTORIES'] = tmpdir()
   launched = await launchApp()
   repo = await buildRepo()
@@ -17,6 +19,7 @@ test.beforeEach(async () => {
 })
 
 test.afterEach(async () => {
+  process.env['GIT_CEILING_DIRECTORIES'] = ceilingBefore
   await launched.close()
   await repo.cleanup()
 })
@@ -35,8 +38,9 @@ async function openRepoWindow(path: string): Promise<Page> {
   return opened
 }
 
-function windowId(page: Page): Promise<number> {
-  return launched.app.browserWindow(page).then((window) => window.evaluate(({ id }) => id))
+async function windowId(page: Page): Promise<number> {
+  const window = await launched.app.browserWindow(page)
+  return window.evaluate(({ id }) => id)
 }
 
 /** Replaces `focus` on every Window with a recorder, since a headless run cannot be trusted to report real focus. */
