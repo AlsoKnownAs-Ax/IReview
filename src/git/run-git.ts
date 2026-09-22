@@ -29,6 +29,18 @@ export function runGit(
   })
 }
 
+// Reads leave `index.lock` to the agents working in the same Worktree, and parsed messages stay untranslated (ADR-0005).
+const READ_ARGS = ['--no-optional-locks']
+const C_LOCALE_ENV = { LC_ALL: 'C' }
+
+/** Runs a git command that only reads, so it never takes the Worktree's locks. */
+export function readGit(
+  args: string[],
+  options: Omit<GitRunOptions, 'env'> = {},
+): Promise<Result<string, GitRunError>> {
+  return runGit([...READ_ARGS, ...args], { ...options, env: C_LOCALE_ENV })
+}
+
 export function toGitRunError(error: ExecFileException, stderr: string): GitRunError {
   // A process that never started fails in the `spawn` syscall (ENOENT, EACCES); anything later is git's own failure.
   if (error.syscall?.startsWith('spawn')) {

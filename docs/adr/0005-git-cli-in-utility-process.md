@@ -12,3 +12,6 @@ All git operations call the user's system `git` (version 2.40 or newer, not bund
 
 - Starting processes is slow on Windows, so the host reuses long-lived git processes where it can.
 - Agents run git in the same worktrees, so read commands use `--no-optional-locks` to avoid fighting over `index.lock`.
+- Two outputs have no machine-readable form and are parsed as text: `git --version`, and the newline-separated paths
+  of `rev-parse --git-common-dir --show-toplevel`. "Not a repository" has no exit code of its own, so it is told
+  apart by its message under `LC_ALL=C`.

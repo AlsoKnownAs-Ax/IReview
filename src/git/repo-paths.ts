@@ -1,41 +1,25 @@
-import type { GitRunError } from '@/shared/contract/git'
+import type { RepoPathsError } from '@/shared/contract/git'
 import type { Result } from '@/shared/result'
-import { runGit } from './run-git'
+import { readGit } from './run-git'
 
 export type RepoPaths = {
   /** Absolute path of the git common dir, shared by the Main checkout and its linked Worktrees. */
-  commonDir: string
+  commonDir?: string
   /** Absolute path of the Main checkout or linked Worktree holding `cwd`. */
-  checkoutRoot: string
+  checkoutRoot?: string
 }
 
-export type NotARepoError = { code: 'NOT_A_REPO'; path: string }
-
-// Git ≥ 2.31 prints each requested path absolute, one per line, in argument order. `rev-parse` has no `-z`, so this is
-// the second exception to ADR-0005's machine-readable output, after `--version`.
-const REV_PARSE_ARGS = [
-  '--no-optional-locks',
-  'rev-parse',
-  '--path-format=absolute',
-  '--git-common-dir',
-  '--show-toplevel',
-]
+// Each requested path absolute, one per line, in argument order. `rev-parse` has no `-z` (ADR-0005).
+const REV_PARSE_ARGS = ['rev-parse', '--path-format=absolute', '--git-common-dir', '--show-toplevel']
 
 // Git has no coded "not a repository" failure. It exits 128 for every fatal error (dubious ownership, corrupt repo, …),
-// so only the message tells "no repo here" apart. `LC_ALL=C` keeps that message untranslated.
-const C_LOCALE_ENV = { LC_ALL: 'C' }
+// so only its message, untranslated under `readGit`'s C locale, tells "no repo here" apart (ADR-0005).
 const NOT_A_REPO_EXIT_CODE = 128
 const NOT_A_REPO_MESSAGE = 'not a git repository'
 
 /** Asks git which repo holds the folder `cwd`, which must exist (a missing one reports `GIT_MISSING`). */
-export async function readRepoPaths({
-  cwd,
-  executable,
-}: {
-  cwd: string
-  executable?: string
-}): Promise<Result<RepoPaths, GitRunError | NotARepoError>> {
-  const { data: stdout, error } = await runGit(REV_PARSE_ARGS, { cwd, executable, env: C_LOCALE_ENV })
+export async function readRepoPaths({ cwd }: { cwd: string }): Promise<Result<RepoPaths, RepoPathsError>> {
+  const { data: stdout, error } = await readGit(REV_PARSE_ARGS, { cwd })
 
   if (error && isNotARepo(error)) {
     return { data: null, error: { code: 'NOT_A_REPO', path: cwd } }
@@ -45,12 +29,13 @@ export async function readRepoPaths({
     return { data: null, error }
   }
 
-  const [commonDir = '', checkoutRoot = ''] = stdout.split('\n', 2)
+  // An empty line is no path; `realpath('')` would resolve to the process's own cwd.
+  const [commonDir, checkoutRoot] = stdout.split('\n', 2).map((line): string | undefined => line || undefined)
 
   return { data: { commonDir, checkoutRoot }, error: null }
 }
 
-function isNotARepo(error: GitRunError): boolean {
+function isNotARepo(error: RepoPathsError): boolean {
   if (error.code !== 'GIT_FAILED') {
     return false
   }

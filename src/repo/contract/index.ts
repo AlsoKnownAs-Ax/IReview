@@ -1,6 +1,6 @@
 import { oc } from '@orpc/contract'
 import { z } from 'zod'
-import { gitRunErrors, gitVersion, gitVersionErrors } from '@/shared/contract/git'
+import { gitVersion, gitVersionErrors, repoPathsErrors } from '@/shared/contract/git'
 import type { DeclaredError } from '@/shared/rpc/rpc'
 
 const resolveRepoInput = z.object({ path: z.string() })
@@ -17,10 +17,9 @@ const resolvedRepo = z.object({
 export type ResolvedRepo = z.infer<typeof resolvedRepo>
 
 const resolveRepoErrors = {
-  ...gitRunErrors,
+  ...repoPathsErrors,
   /** No folder can be read at `path`: missing, a file, not accessible, or gone before git answered. */
   PATH_NOT_FOUND: { data: z.object({ code: z.literal('PATH_NOT_FOUND'), path: z.string() }) },
-  NOT_A_REPO: { data: z.object({ code: z.literal('NOT_A_REPO'), path: z.string() }) },
   WSL_UNSUPPORTED: { data: z.object({ code: z.literal('WSL_UNSUPPORTED'), path: z.string() }) },
 }
 

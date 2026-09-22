@@ -25,7 +25,7 @@ export async function resolveRepo({ path }: ResolveRepoInput): Promise<Result<Re
   // Real paths resolve symlinks and Windows 8.3 short names, so the same Repo always compares equal.
   const [identity, checkoutRoot] = await Promise.all([paths.commonDir, paths.checkoutRoot].map(realPathOf))
 
-  // Absent only if the folder vanished while git ran.
+  // Absent if the folder vanished while git ran, or git printed no path.
   if (!identity || !checkoutRoot) {
     return { data: null, error: { code: 'PATH_NOT_FOUND', path } }
   }
@@ -44,8 +44,7 @@ function isFolder(path: string): Promise<boolean> {
   )
 }
 
-/** `realpath('')` resolves to the process's own cwd, so an empty path is absent instead. */
-async function realPathOf(path: string): Promise<string | undefined> {
+async function realPathOf(path: string | undefined): Promise<string | undefined> {
   if (!path) {
     return undefined
   }
