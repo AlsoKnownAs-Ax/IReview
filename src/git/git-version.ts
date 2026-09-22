@@ -31,7 +31,9 @@ export function parseGitVersion(
   stdout: string,
 ): Result<GitVersion, Extract<GitVersionError, { code: 'GIT_VERSION_UNRECOGNIZED' }>> {
   const [, major, minor, patch] = VERSION_OUTPUT.exec(stdout.trim()) ?? []
-  if (!major || !minor || !patch) return { data: null, error: { code: 'GIT_VERSION_UNRECOGNIZED', output: stdout } }
+  if (!major || !minor || !patch) {
+    return { data: null, error: { code: 'GIT_VERSION_UNRECOGNIZED', output: stdout } }
+  }
 
   return { data: { major: Number(major), minor: Number(minor), patch: Number(patch) }, error: null }
 }

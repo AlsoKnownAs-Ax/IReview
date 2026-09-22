@@ -37,7 +37,10 @@ test('closing the Window stops its workspace host', async () => {
   await expectHostConnected(window)
   const metrics = await app.evaluate(({ app }) => app.getAppMetrics())
   const hostMetric = metrics.find((metric) => metric.name === 'IReview Workspace Host')
-  if (!hostMetric) throw new Error('The Window has no workspace host process')
+  if (!hostMetric) {
+    throw new Error('The Window has no workspace host process')
+  }
+
   expect(isRunning(hostMetric.pid)).toBe(true)
 
   // A second, hostless window keeps the app from quitting, so only closing the Window can stop the host.

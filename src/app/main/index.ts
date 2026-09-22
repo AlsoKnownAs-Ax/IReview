@@ -29,14 +29,21 @@ function createWindow(): void {
 
 void app.whenReady().then(() => {
   serveRendererOverAppProtocol(join(__dirname, '../renderer'))
-  if (devServerUrl) enforceCspOnDevServer(devServerUrl)
+  if (devServerUrl) {
+    enforceCspOnDevServer(devServerUrl)
+  }
+
   createWindow()
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow()
+    }
   })
 })
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit()
+  if (process.platform !== 'darwin') {
+    app.quit()
+  }
 })
