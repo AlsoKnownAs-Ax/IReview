@@ -5,12 +5,12 @@ import { isAllowedExternalUrl } from './external-url'
  * No navigation away from the loaded page, no new windows, no webviews and no permissions, for every webContents and
  * session the app creates. Must run before the app is ready.
  */
-export function lockDownWebContents(): void {
+export function lockDownWebContents() {
   app.on('web-contents-created', (_, contents) => lockDown(contents))
   app.on('session-created', denyPermissions)
 }
 
-function lockDown(contents: WebContents): void {
+function lockDown(contents: WebContents) {
   // Covers the main frame and subframes, but not what the main process loads with loadURL. Reloading the current
   // document (such as Vite's full reload in dev) is not navigating away, so it is allowed.
   contents.on('will-frame-navigate', (event) => {
@@ -30,7 +30,7 @@ function lockDown(contents: WebContents): void {
   })
 }
 
-function denyPermissions(session: Session): void {
+function denyPermissions(session: Session) {
   session.setPermissionRequestHandler((_, __, callback) => callback(false))
   session.setPermissionCheckHandler(() => false)
 }

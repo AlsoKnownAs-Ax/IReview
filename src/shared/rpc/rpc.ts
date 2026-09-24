@@ -78,7 +78,7 @@ function portClosed(): Promise<never> {
 }
 
 /** Declared errors are answers; anything else is a bug or a misbehaving peer, worth a line in the host's log. */
-function logUnexpected(error: unknown): void {
+function logUnexpected(error: unknown) {
   if (isDefinedError(error)) {
     return
   }

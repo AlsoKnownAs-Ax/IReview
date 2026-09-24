@@ -8,7 +8,7 @@ import { mainRouter, type MainRouterOptions } from './main-router'
 const repo: ResolvedRepo = { identity: '/repo/.git', checkoutRoot: '/repo' }
 
 function connectMain(options: Partial<MainRouterOptions> = {}) {
-  const createWindow = vi.fn(() => ({ focus: (): void => {}, on: (): void => {} }))
+  const createWindow = vi.fn(() => ({ focus: () => {}, on: () => {} }))
   const registry = createRepoRegistry({ createWindow })
   const client: MainClient = openChannel<typeof mainContract>(
     mainRouter({ pickFolder: async (): Promise<null> => null, registry, ...options }),

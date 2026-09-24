@@ -12,10 +12,10 @@ function fakeWindow(): FakeWindow {
   const listeners: (() => void)[] = []
   return {
     focus: vi.fn(),
-    on: (_event, listener): void => {
+    on: (_event, listener) => {
       listeners.push(listener)
     },
-    close: (): void => listeners.forEach((listener) => listener()),
+    close: () => listeners.forEach((listener) => listener()),
   }
 }
 
