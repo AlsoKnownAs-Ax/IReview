@@ -25,7 +25,7 @@ test.afterEach(async () => {
 })
 
 /** Open Folder from the Welcome Window with the native picker stubbed to answer `path`. */
-async function openFolder(path: string): Promise<void> {
+async function openFolder(path: string) {
   await launched.app.evaluate(({ dialog }, picked) => {
     dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [picked] })
   }, path)
@@ -49,7 +49,7 @@ async function recordFocus(): Promise<() => Promise<number[]>> {
     const focused: number[] = []
     Object.assign(globalThis, { focused })
     BrowserWindow.getAllWindows().forEach((window) => {
-      window.focus = (): void => {
+      window.focus = () => {
         focused.push(window.id)
       }
     })

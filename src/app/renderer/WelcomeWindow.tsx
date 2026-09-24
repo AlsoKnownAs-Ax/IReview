@@ -13,7 +13,7 @@ export function WelcomeWindow({ openFolder }: WelcomeWindowProps): ReactElement 
   const recentReposHeadingId = useId()
   const [opening, setOpening] = useState<OpenFolderState>({ isOpening: false })
 
-  async function onOpenFolder(): Promise<void> {
+  async function onOpenFolder() {
     setOpening({ isOpening: true })
     const { error } = await openFolder()
 
