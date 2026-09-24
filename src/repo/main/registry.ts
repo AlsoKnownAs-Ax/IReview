@@ -18,7 +18,7 @@ export function createRepoRegistry({ createWindow }: RepoRegistryOptions): RepoR
   const windows = new Map<string, RepoWindow>()
 
   return {
-    open(repo): void {
+    open(repo) {
       const existing = windows.get(repo.identity)
 
       if (existing) {

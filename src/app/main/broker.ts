@@ -19,12 +19,12 @@ export function startWorkspaceHost(window: BrowserWindow) {
 }
 
 /** Serves main's own contract to `window` over a fresh channel on every page load, brokered like the host's. */
-export function serveMain(window: BrowserWindow, router: MainRouter): void {
+export function serveMain(window: BrowserWindow, router: MainRouter) {
   brokerOnEachLoad(window, MAIN_PORT, (port) => serve<typeof mainContract>(router, port))
 }
 
 /** On every page load, posts one end of a fresh channel into the page as `name` and hands the other to `serveOn`. */
-function brokerOnEachLoad(window: BrowserWindow, name: string, serveOn: (port: MessagePortMain) => void): void {
+function brokerOnEachLoad(window: BrowserWindow, name: string, serveOn: (port: MessagePortMain) => void) {
   const contents = window.webContents
 
   contents.on('did-finish-load', () => {

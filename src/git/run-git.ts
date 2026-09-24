@@ -18,8 +18,8 @@ export function runGit(
 ): Promise<Result<string, GitRunError>> {
   const options = { cwd, env: { ...process.env, ...env }, encoding: 'utf8', windowsHide: true } as const
 
-  return new Promise((resolve): void => {
-    execFile(executable, args, options, (error, stdout, stderr): void => {
+  return new Promise((resolve) => {
+    execFile(executable, args, options, (error, stdout, stderr) => {
       if (error) {
         return resolve({ data: null, error: toGitRunError(error, stderr) })
       }

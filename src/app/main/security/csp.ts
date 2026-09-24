@@ -27,7 +27,7 @@ export function withContentSecurityPolicy(response: Response): Response {
  * Applies the policy to the Vite dev server, relaxed only as far as HMR needs: its inline React Refresh preamble,
  * injected `<style>` tags and its websocket. Must run after the app is ready.
  */
-export function enforceCspOnDevServer(devServerUrl: string): void {
+export function enforceCspOnDevServer(devServerUrl: string) {
   const { origin, host } = new URL(devServerUrl)
   const policy = serialize({
     ...BASE_DIRECTIVES,

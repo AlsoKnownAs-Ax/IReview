@@ -20,7 +20,7 @@ function isRunning(pid: number): boolean {
   }
 }
 
-async function expectHostConnected(window: Page): Promise<void> {
+async function expectHostConnected(window: Page) {
   await expect(window.getByTestId('workspace-host-status')).toHaveText('Workspace host connected')
 }
 
