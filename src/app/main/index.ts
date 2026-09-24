@@ -11,7 +11,7 @@ const devServerUrl = (!app.isPackaged && process.env['ELECTRON_RENDERER_URL']) |
 registerAppScheme()
 lockDownWebContents()
 
-function createWindow(): void {
+function createWindow() {
   const window = new BrowserWindow({
     width: 1200,
     height: 800,

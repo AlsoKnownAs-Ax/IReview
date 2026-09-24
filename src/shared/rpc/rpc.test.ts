@@ -53,21 +53,21 @@ function connectEndlessLog(): { client: Client<typeof contract>; host: EndlessLo
   return { client, host }
 }
 
-async function expectCancelled(host: EndlessLogHost): Promise<void> {
+async function expectCancelled(host: EndlessLogHost) {
   await vi.waitFor(() => expect(host.cancelled).toBe(true))
   const yielded = host.yielded
   await sleep(30)
   expect(host.yielded).toBe(yielded)
 }
 
-async function collect<T>(items: AsyncIterable<T>, into: T[]): Promise<void> {
+async function collect<T>(items: AsyncIterable<T>, into: T[]) {
   for await (const item of items) {
     into.push(item)
   }
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
+function sleep(ms: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, ms))
 }
 
 test('a call resolves with the handler result', async () => {
@@ -260,7 +260,7 @@ test('event subscribers receive published payloads, and the host stops deliverin
   const { data: changes } = await client.changed()
   assert(changes)
   const paths: string[] = []
-  const consumed = (async (): Promise<void> => {
+  const consumed = (async () => {
     for await (const { path } of changes) {
       paths.push(path)
       if (paths.length === 2) {

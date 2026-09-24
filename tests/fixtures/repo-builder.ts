@@ -36,7 +36,7 @@ export async function buildRepo(): Promise<TempRepo> {
     GIT_COMMITTER_EMAIL: COMMIT_IDENTITY.email,
     GIT_COMMITTER_DATE: COMMIT_IDENTITY.date,
   }
-  const git = async (args: string[], cwd = mainCheckout): Promise<void> => {
+  const git = async (args: string[], cwd = mainCheckout) => {
     await execFileAsync('git', args, { cwd, env })
   }
 
@@ -53,6 +53,6 @@ export async function buildRepo(): Promise<TempRepo> {
       await git(['worktree', 'add', '-b', name, path])
       return path
     },
-    cleanup: (): Promise<void> => rm(dir, { recursive: true, force: true, maxRetries: 3 }),
+    cleanup: () => rm(dir, { recursive: true, force: true, maxRetries: 3 }),
   }
 }
