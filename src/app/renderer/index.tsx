@@ -1,7 +1,7 @@
 import './zod-jitless'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { connectWorkspaceHost } from '@/repo/renderer'
+import { connectMain, connectWorkspaceHost } from '@/repo/renderer'
 import { App } from './App'
 import './theme/index.css'
 
@@ -10,10 +10,11 @@ if (!root) {
   throw new Error('Missing #root element')
 }
 
+const main = connectMain()
 const workspaceHost = connectWorkspaceHost()
 
 createRoot(root).render(
   <StrictMode>
-    <App workspaceHost={workspaceHost} />
+    <App main={main} workspaceHost={workspaceHost} />
   </StrictMode>,
 )

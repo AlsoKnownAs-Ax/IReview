@@ -1,10 +1,19 @@
 import { isDefinedError, toORPCError } from '@orpc/client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactElement } from 'react'
+import type { ResolvedRepo } from '@/repo/contract'
+import { openFolder, type OpenFolder } from '@/repo/renderer'
 import { MINIMUM_GIT_VERSION, type GitVersion, type GitVersionError } from '@/shared/contract/git'
+import type { MainClient } from '@/shared/contract/main'
 import type { WorkspaceClient } from '@/shared/contract/workspace'
+import { RepoWindow } from './RepoWindow'
 import { WelcomeWindow } from './WelcomeWindow'
 
+export type AppProps = { main: Promise<MainClient>; workspaceHost: Promise<WorkspaceClient> }
+
 type HostConnection = { isConnected: boolean; errorCode?: string }
+
+/** Which Window this is: unknown until main answers, then bound to `repo` or, without one, the Welcome Window. */
+type WindowBinding = { isKnown: boolean; repo?: ResolvedRepo; errorCode?: string }
 
 /** `error` is a failure the git check declares; `errorCode` is any other failure of the call. */
 type GitCheck = { version?: GitVersion; error?: GitVersionError; errorCode?: string }
@@ -61,9 +70,53 @@ function gitStatusText({ version, error, errorCode }: GitCheck): string {
   return 'Checking git…'
 }
 
-export function App({ workspaceHost }: { workspaceHost: Promise<WorkspaceClient> }) {
+function windowFor(
+  { isKnown, repo, errorCode }: WindowBinding,
+  openFolderFromWelcome: OpenFolder,
+): ReactElement | null {
+  if (errorCode) {
+    return (
+      <p role="alert" className="px-md py-lg text-body-sm text-error">
+        Could not tell which Repo this Window shows ({errorCode})
+      </p>
+    )
+  }
+
+  if (!isKnown) {
+    return null
+  }
+
+  if (repo) {
+    return <RepoWindow repo={repo} />
+  }
+
+  return <WelcomeWindow openFolder={openFolderFromWelcome} />
+}
+
+export function App({ main, workspaceHost }: AppProps) {
   const [connection, setConnection] = useState<HostConnection>({ isConnected: false })
   const [git, setGit] = useState<GitCheck>({})
+  const [binding, setBinding] = useState<WindowBinding>({ isKnown: false })
+
+  useEffect(() => {
+    let isMounted = true
+    void main.then((client) => {
+      void client.windowRepo().then(({ data: repo, error }) => {
+        if (!isMounted) {
+          return
+        }
+
+        if (error) {
+          return setBinding({ isKnown: true, errorCode: toORPCError(error).code })
+        }
+
+        setBinding({ isKnown: true, repo: repo ?? undefined })
+      })
+    })
+    return () => {
+      isMounted = false
+    }
+  }, [main])
 
   useEffect(() => {
     let isMounted = true
@@ -100,9 +153,14 @@ export function App({ workspaceHost }: { workspaceHost: Promise<WorkspaceClient>
     }
   }, [workspaceHost])
 
+  const openFolderFromWelcome: OpenFolder = async () => {
+    const [mainClient, hostClient] = await Promise.all([main, workspaceHost])
+    return openFolder({ main: mainClient, workspaceHost: hostClient })
+  }
+
   return (
     <main className="min-h-screen bg-canvas text-ink">
-      <WelcomeWindow />
+      {windowFor(binding, openFolderFromWelcome)}
       <p data-testid="workspace-host-status">{hostStatusText(connection)}</p>
       <p data-testid="git-version-status">{gitStatusText(git)}</p>
     </main>
